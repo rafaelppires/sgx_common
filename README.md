@@ -1,5 +1,6 @@
+## Common SGX
 
-Common code shared among several SGX project
+Common glue code shared among several SGX projects
 
 Under development
 
