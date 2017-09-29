@@ -1,6 +1,7 @@
 #ifndef _LIBCPROXY_H_DEFINED_
 #define _LIBCPROXY_H_DEFINED_
 
+#include <stdarg.h>
 #include <stdlib.h> // for size_t
 
 /* STDIO */
@@ -103,11 +104,13 @@ char *strcpy (char *__restrict, const char *__restrict);
 #define CLOCKS_PER_SEC 1000000L
 typedef long time_t;
 typedef long clock_t;
+typedef long suseconds_t;
 time_t mktime (struct tm *);
 struct tm *gmtime (const time_t *);
 struct tm *localtime (const time_t *);
 time_t time (time_t *__timer);
 clock_t clock (void);
+struct timeval { time_t tv_sec; suseconds_t tv_usec; };
 
 /* LOCALE */
 #define LC_CTYPE    0
@@ -149,8 +152,58 @@ struct lconv {
 char *setlocale (int, const char *);
 struct lconv *localeconv(void);
 
+/* GETOPT */
+int getopt(int, char * const [], const char *);
+extern char *optarg;
+extern int optind, opterr, optopt, optreset;
+
+/* SIGNAL */
+
+#define SIGHUP    1
+#define SIGINT    2
+#define SIGQUIT   3
+#define SIGILL    4
+#define SIGTRAP   5
+#define SIGABRT   6
+#define SIGIOT    SIGABRT
+#define SIGBUS    7
+#define SIGFPE    8
+#define SIGKILL   9
+#define SIGUSR1   10
+#define SIGSEGV   11
+#define SIGUSR2   12
+#define SIGPIPE   13
+#define SIGALRM   14
+#define SIGTERM   15
+#define SIGSTKFLT 16
+#define SIGCHLD   17
+#define SIGCONT   18
+#define SIGSTOP   19
+#define SIGTSTP   20
+#define SIGTTIN   21
+#define SIGTTOU   22
+#define SIGURG    23
+#define SIGXCPU   24
+#define SIGXFSZ   25
+#define SIGVTALRM 26
+#define SIGPROF   27
+#define SIGWINCH  28
+#define SIGIO     29
+#define SIGPOLL   29
+#define SIGPWR    30
+#define SIGSYS    31
+#define SIGUNUSED SIGSYS
+
+int vfprintf (FILE *, const char *, va_list);
+
 #ifdef __cplusplus
 }
+
+namespace std {
+    typedef struct _IO_FILE FILE;
+}
+
+#include "libcpp_mock.h"
 #endif
 
 #endif

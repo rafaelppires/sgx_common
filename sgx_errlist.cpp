@@ -84,6 +84,11 @@ sgx_errlist_t sgx_errlist[] = {
         "The target enclave 32/64 bit mode or sim/hw mode is incompatible with the mode of current uRTS.",
         NULL
     },
+    {
+        SGX_ERROR_SERVICE_UNAVAILABLE,
+        "",
+        NULL
+    }
 };
 
 //------------------------------------------------------------------------------
@@ -103,7 +108,7 @@ void print_error_message(sgx_status_t ret) {
     }
 
     if (idx == ttl) 
-        printf("Error: Unexpected error occurred. (%X)\n",ret);
+        printf("Error: Unexpected error occurred. (0x%X)\n",ret);
 }
 
 

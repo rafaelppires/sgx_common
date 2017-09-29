@@ -1,9 +1,11 @@
-#include <libc_proxy.h>
-#include <file_mock.h>
+#include "libc_proxy.h"
+#include "file_mock.h"
 #include <map>
 #include <string>
+#include <sgx_trts.h>
 
 static FILE *next_fd = stderr + 1;
+static FILE *const nstdrandom = stdin - 1;
 extern "C" {
 extern void printf(const char *fmt, ...);
 }
@@ -37,6 +39,7 @@ FILE* fmock_open( const char *fname ) {
     std::string flname(fname);
     if( strlen(fname) > 2 && fname[0] == '.' && fname[1] == '/' )
         flname.erase(0,2);
+    if( flname == "/dev/urandom" || flname == "/dev/random" ) return nstdrandom;
     if( files.find( flname ) == files.end() ) return NULL;
     return files[ flname ].id;
 }
@@ -63,6 +66,12 @@ int fmock_getc(FILE *f) {
 
 size_t fmock_fread(void *ptr, size_t size, size_t nmemb, FILE *f) {
     size_t ret = 0, pos = 0;
+    if( f == nstdrandom ) {
+        if( sgx_read_rand((unsigned char*)ptr,size*nmemb) == SGX_SUCCESS )
+            ret = nmemb;
+        return ret; 
+    }
+
     MapFiles::iterator it;
     if( (it = files_byids.find(f)) == files_byids.end() ) return ret;
 

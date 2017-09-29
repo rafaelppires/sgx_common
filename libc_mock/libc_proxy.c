@@ -1,6 +1,7 @@
+#include <sgx_error.h>
 #include <string.h>
 #include "libc_proxy.h"
-#include <file_mock.h>
+#include "file_mock.h"
 #define TRACE_LIBC_CALLS
 
 /* STDIO */
@@ -95,11 +96,14 @@ int fputc(int c, FILE *stream) {
 #ifdef TRACE_LIBC_CALLS
     printf("int fputc(int c, FILE *stream)\n");
 #endif
-    return NULL;
+    return EOF;
 }
 
 #include <stdarg.h>
+#define stdfile_str(a) (a == stdout ? "stdout" : "\033[31mstderr\033[0m")
+#define outerr_str(a,b) (printf("%s: %s", stdfile_str(a), (const char*)b))
 int fprintf(FILE *stream, const char *format, ...) {
+    int ret = 0;
 #ifdef TRACE_LIBC_CALLS
     if(stream == stdout || stream == stderr ) {
         char buf[1024] = {'\0'};
@@ -107,10 +111,18 @@ int fprintf(FILE *stream, const char *format, ...) {
         va_start(ap, format);
         vsnprintf(buf, 1024, format, ap);
         va_end(ap);
-        ocall_print(buf);
+        ret = outerr_str(stream,buf);
     } else
-        printf("int fprintf(FILE *stream='%d', const char *format, ...)\n",(int)stream);
+        ret = printf("int fprintf(FILE *stream='%d', const char *format, ...)\n",(int)stream);
 #endif
+    return ret;
+}
+
+int vfprintf (FILE *f, const char *fmt, va_list v) {
+    char buf[1024] = {'\0'};
+    vsnprintf(buf, sizeof(buf), fmt, v);
+    int ret = fprintf(f,buf);
+    return ret;
 }
 
 size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream) {
@@ -125,7 +137,7 @@ size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream) {
 size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream) {
 #ifdef TRACE_LIBC_CALLS
     if(stream == stdout || stream == stderr) {
-        printf((const char*)ptr);
+        outerr_str(stream,ptr);
     } else
         printf("size_t fwrite(const void *ptr, size_t size='%d', size_t nmemb='%d', FILE *stream='%d')\n",size, nmemb, (int)stream);
 #endif
@@ -152,9 +164,14 @@ FILE *tmpfile(void) {
 
 /* STDLIB */
 int rand (void) {
-#ifdef TRACE_LIBC_CALLS
-    printf("int rand (void)\n");
+    int ret = -1;
+    unsigned long rnd;
+    if( sgx_read_rand( &rnd, sizeof(unsigned long) ) == SGX_SUCCESS )
+        ret = rnd % RAND_MAX;
+#if defined TRACE_LIBC_CALLS && defined TRACE_STDLIB
+    printf("int rand (void) = %d\n", ret);
 #endif
+    return ret;
 }
 
 void srand (unsigned seed) {
@@ -180,7 +197,7 @@ void exit (int status) {
 }
 
 /* STRING */
-char *strcpy (char *dest, const char *src) { strncpy(dest,src,strlen(src)); }
+char *strcpy (char *dest, const char *src) { strncpy(dest,src,strlen(src)+1); }
 
 /* TIME */
 time_t mktime (struct tm *t) {
@@ -226,5 +243,12 @@ struct lconv *localeconv(void) {
     l.thousands_sep=l.grouping=l.int_curr_symbol=l.currency_symbol=l.mon_decimal_point=l.mon_thousands_sep=l.mon_grouping=l.positive_sign=l.negative_sign="";
     l.int_frac_digits=l.frac_digits=l.p_cs_precedes=l.p_sep_by_space=l.n_cs_precedes=l.n_sep_by_space=l.p_sign_posn=l.n_sign_posn=l.int_p_cs_precedes=l.int_p_sep_by_space=l.int_n_cs_precedes=l.int_n_sep_by_space=l.int_p_sign_posn=l.int_n_sign_posn=127; 
     return &l;
+}
+
+int raise(int sig) {
+#ifdef TRACE_LIBC_CALLS
+    printf("raise(sig=%d)\n",sig);
+#endif
+    return 0;
 }
 
