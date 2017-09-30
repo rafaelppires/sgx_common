@@ -5,9 +5,9 @@
 #define TRACE_LIBC_CALLS
 
 /* STDIO */
-FILE *const stdin  = (FILE*)666;
-FILE *const stdout = (FILE*)667;
-FILE *const stderr = (FILE*)668;
+FILE *const stdin  = (FILE*)0;
+FILE *const stdout = (FILE*)1;
+FILE *const stderr = (FILE*)2;
 
 FILE *fopen(const char *path, const char *mode) {
     FILE *ret = fmock_open(path);
@@ -93,38 +93,39 @@ char *fgets(char *s, int size, FILE *stream) {
 }
 
 int fputc(int c, FILE *stream) {
+    unsigned char out = c;
+    if( fwrite( &out, 1, sizeof(out), stream ) )
+        return c;
+    else {
 #ifdef TRACE_LIBC_CALLS
-    printf("int fputc(int c, FILE *stream)\n");
+        printf("int fputc(int c='%c', FILE *stream='%d')\n", c, (int)stream);
 #endif
-    return EOF;
+        return EOF;
+    }
 }
 
+//------------------------------------------------------------------------------
 #include <stdarg.h>
 #define stdfile_str(a) (a == stdout ? "stdout" : "\033[31mstderr\033[0m")
 #define outerr_str(a,b) (printf("%s: %s", stdfile_str(a), (const char*)b))
 int fprintf(FILE *stream, const char *format, ...) {
-    int ret = 0;
-#ifdef TRACE_LIBC_CALLS
-    if(stream == stdout || stream == stderr ) {
-        char buf[1024] = {'\0'};
-        va_list ap;
-        va_start(ap, format);
-        vsnprintf(buf, 1024, format, ap);
-        va_end(ap);
-        ret = outerr_str(stream,buf);
-    } else
-        ret = printf("int fprintf(FILE *stream='%d', const char *format, ...)\n",(int)stream);
-#endif
-    return ret;
-}
-
-int vfprintf (FILE *f, const char *fmt, va_list v) {
     char buf[1024] = {'\0'};
-    vsnprintf(buf, sizeof(buf), fmt, v);
-    int ret = fprintf(f,buf);
+    va_list ap;
+    va_start(ap, format);
+    vsnprintf(buf,sizeof(buf),format,ap);
+    va_end(ap);
+    return fwrite(buf,1,strlen(buf),stream);
+}
+
+//------------------------------------------------------------------------------
+int vfprintf (FILE *f, const char *format, va_list v) {
+    char buf[1024] = {'\0'};
+    vsnprintf(buf,sizeof(buf),format,v);
+    int ret = fwrite(buf,1,strlen(buf),f);
     return ret;
 }
 
+//------------------------------------------------------------------------------
 size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream) {
     size_t ret = fmock_fread(ptr,size,nmemb,stream);
 #ifdef TRACE_LIBC_CALLS
@@ -134,16 +135,21 @@ size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream) {
     return ret;
 }
 
+//------------------------------------------------------------------------------
 size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream) {
-#ifdef TRACE_LIBC_CALLS
+    size_t ret = 0;
     if(stream == stdout || stream == stderr) {
-        outerr_str(stream,ptr);
-    } else
-        printf("size_t fwrite(const void *ptr, size_t size='%d', size_t nmemb='%d', FILE *stream='%d')\n",size, nmemb, (int)stream);
+        ret = outerr_str(stream,ptr) / size;
+    } else {
+        ret = fmock_fwrite(ptr,size,nmemb,stream);
+#ifdef TRACE_LIBC_CALLS
+        if(!ret) printf("size_t fwrite(const void *ptr, size_t size='%d', size_t nmemb='%d', FILE *stream='%d') : %d\n",size, nmemb, (int)stream, ret);
 #endif
-    return nmemb;
+    }
+    return ret;
 }
 
+//------------------------------------------------------------------------------
 int setvbuf(FILE *stream, char *buf, int mode, size_t size) {
 #ifdef TRACE_LIBC_CALLS
     printf("int setvbuf(FILE *stream, char *buf, int mode, size_t size)\n");

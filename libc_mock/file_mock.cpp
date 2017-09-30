@@ -4,8 +4,8 @@
 #include <string>
 #include <sgx_trts.h>
 
-static FILE *next_fd = stderr + 1;
-static FILE *const nstdrandom = stdin - 1;
+static FILE *const nstdrandom = (FILE*)3;
+static FILE *next_fd = nstdrandom + 1;
 extern "C" {
 extern void printf(const char *fmt, ...);
 }
@@ -17,8 +17,9 @@ struct FileDescriptor {
     FILE* id;
     std::string data;
     std::string::iterator it;
+    bool writable_;
 
-    FileDescriptor() {
+    FileDescriptor(): writable_(false) {
         id = next_fd++;
     }
 
@@ -27,14 +28,26 @@ struct FileDescriptor {
         it = data.begin();
         files_byids[id] = this;
     }
+
+    void set_writable() {
+        writable_ = true;
+        files_byids[id] = this;
+    }
 };
 typedef std::map<std::string, FileDescriptor> MapFilesByName;
 static MapFilesByName files;
 
+//------------------------------------------------------------------------------
+void fmock_allow_writable( const char *fname ) {
+    files[ std::string(fname) ].set_writable();
+}
+
+//------------------------------------------------------------------------------
 void file_mock( const char *buff, size_t len, const char *fname ) {
     files[ std::string(fname) ].set(buff,len);
 }
 
+//------------------------------------------------------------------------------
 FILE* fmock_open( const char *fname ) {
     std::string flname(fname);
     if( strlen(fname) > 2 && fname[0] == '.' && fname[1] == '/' )
@@ -44,26 +57,31 @@ FILE* fmock_open( const char *fname ) {
     return files[ flname ].id;
 }
 
+//------------------------------------------------------------------------------
 int fmock_close( FILE *f ) {
-/*
+    MapFiles::iterator fit = files_byids.find(f);
+    if( fit == files_byids.end() ) return EBADF;
+    files_byids.erase(fit);
+
     MapFilesByName::iterator it = files.begin();
     for(; it != files.end(); ++it )
         if( it->second.id == f ) { files.erase(it); break; }
-    files_byids.erase(f);
-*/
     return 0;
 }
 
+//------------------------------------------------------------------------------
 int fmock_feof(FILE *f) {
     return files_byids.find(f) == files_byids.end() ||
            files_byids[f]->it == files_byids[f]->data.end();
 }
 
+//------------------------------------------------------------------------------
 int fmock_getc(FILE *f) {
     if( fmock_feof(f) ) return EOF;
     return (int)*(files_byids[f]->it)++;
 }
 
+//------------------------------------------------------------------------------
 size_t fmock_fread(void *ptr, size_t size, size_t nmemb, FILE *f) {
     size_t ret = 0, pos = 0;
     if( f == nstdrandom ) {
@@ -85,4 +103,29 @@ size_t fmock_fread(void *ptr, size_t size, size_t nmemb, FILE *f) {
     }
     return ret;
 }
+
+//------------------------------------------------------------------------------
+size_t fmock_fwrite(const void *ptr, size_t size, size_t nmemb, FILE *f) {
+    size_t ret = 0;
+    MapFiles::iterator it;
+    if( (it = files_byids.find(f)) == files_byids.end() ) return ret;
+
+    FileDescriptor &fd = *it->second;
+    fd.data += std::string((const char*)ptr,size*nmemb);
+    return nmemb;
+}
+
+//------------------------------------------------------------------------------
+size_t fmock_flush( char *buf, size_t sz, FILE *f ) {
+    size_t ret = 0;
+    MapFiles::iterator it;
+    if( (it = files_byids.find(f)) == files_byids.end() ) return ret;
+
+    ret = std::min( sz-1, it->second->data.size() );
+    memcpy(buf, it->second->data.c_str(), ret );
+    buf[ret] = '\0';
+    return ret+1;
+}
+
+//------------------------------------------------------------------------------
 
