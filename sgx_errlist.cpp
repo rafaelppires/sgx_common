@@ -98,6 +98,10 @@ void print_error_message(sgx_status_t ret) {
     size_t idx = 0;
     size_t ttl = sizeof sgx_errlist/sizeof sgx_errlist[0];
 
+    if( ret == SGX_SUCCESS ) {
+        printf("Success\n"); return;
+    }
+
     for (idx = 0; idx < ttl; idx++) {
         if(ret == sgx_errlist[idx].err) {
             if(NULL != sgx_errlist[idx].sug)

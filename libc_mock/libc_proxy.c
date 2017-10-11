@@ -98,7 +98,7 @@ int fputc(int c, FILE *stream) {
         return c;
     else {
 #ifdef TRACE_LIBC_CALLS
-        printf("int fputc(int c='%c', FILE *stream='%d')\n", c, (int)stream);
+        printf("int fputc(int c='%c', FILE *stream='%ld')\n", c, (long int)stream);
 #endif
         return EOF;
     }
@@ -130,7 +130,7 @@ size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream) {
     size_t ret = fmock_fread(ptr,size,nmemb,stream);
 #ifdef TRACE_LIBC_CALLS
     if( !ret )
-    printf("size_t fread(void *ptr, size_t size='%d', size_t nmemb='%d', FILE *stream='%d')\n",size, nmemb, (int)stream);
+    printf("size_t fread(void *ptr, size_t size='%d', size_t nmemb='%d', FILE *stream='%ld')\n",size, nmemb, (long int)stream);
 #endif
     return ret;
 }
@@ -143,7 +143,7 @@ size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream) {
     } else {
         ret = fmock_fwrite(ptr,size,nmemb,stream);
 #ifdef TRACE_LIBC_CALLS
-        if(!ret) printf("size_t fwrite(const void *ptr, size_t size='%d', size_t nmemb='%d', FILE *stream='%d') : %d\n",size, nmemb, (int)stream, ret);
+        if(!ret) printf("size_t fwrite(const void *ptr, size_t size='%d', size_t nmemb='%d', FILE *stream='%ld') : %d\n",size, nmemb, (long int)stream, ret);
 #endif
     }
     return ret;

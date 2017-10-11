@@ -1,4 +1,4 @@
-#include <crypto.h>
+#include "sgx_cryptoall.h"
 #include <fstream>
 #include <iostream>
 //------------------------------------------------------------------------------
