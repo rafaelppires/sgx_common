@@ -18,11 +18,18 @@ using CryptoPP::CTR_Mode;
 using CryptoPP::StringSource;
 using CryptoPP::StringSink;
 using CryptoPP::StreamTransformationFilter;
+#endif // cpp && !sgx
 
+#if defined(__cplusplus)
 namespace Crypto {
 
+#ifndef ENABLE_SGX
 typedef CryptoPP::RSA::PublicKey PubKey;
 typedef CryptoPP::RSA::PrivateKey PrvKey;
+#else
+typedef int PubKey; // temporary
+typedef int PrvKey; // temporary
+#endif
 
 std::string encrypt_aes( const std::string &plain );
 void encrypt_aes_inline( std::string & );
@@ -37,7 +44,7 @@ std::string sha256( const std::string& );
 std::string base64( const std::string& );
 
 }
-#endif // cpp && !sgx
+#endif // cpp
 
 //------------------------------------------------------------------------------
 inline bool isgraphorspace( char cc ) {
