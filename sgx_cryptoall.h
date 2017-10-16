@@ -47,33 +47,52 @@ std::string base64( const std::string& );
 #endif // cpp
 
 //------------------------------------------------------------------------------
-inline bool isgraphorspace( char cc ) {
-    unsigned char c = cc;
-    return (c >= 0x09 && c <= 0x0D) || (c >= 0x20 && c <= 0x7E ) ||
-           (c >= 0x80 && c <= 0xFE);
+inline bool isspace( uint8_t c ) {
+    return c >= 0x09 && c <= 0x0D;
 }
 
 //------------------------------------------------------------------------------
-inline bool is_cipher( const char *buff, size_t len ) {
-    for( size_t i = 0; i < len; ++i )
+inline bool isasciigraph( uint8_t c ) {
+    return c >= 0x20 && c <= 0x7E;
+}
+
+//------------------------------------------------------------------------------
+inline const char* hexchar( uint8_t c ) {
+    static std::string hex = "0123456789ABCDEF";
+    static char ret[3];
+    ret[0] = hex[ (c>>4) % hex.size() ];
+    ret[1] = hex[ (c&0xF) % hex.size() ];
+    ret[2] = 0;
+    return ret;
+}
+
+//------------------------------------------------------------------------------
+inline bool isgraphorspace( unsigned char c ) {
+    return isspace(c) || isasciigraph(c) || (c >= 0x80 && c <= 0xFE);
+}
+
+//------------------------------------------------------------------------------
+//extern "C" { extern int printf( const char *fmt, ... ); }
+inline bool is_cipher( const uint8_t *buff, size_t len ) {
+    for( size_t i = 0; i < len; ++i ) {
         if( !isgraphorspace(buff[i]) ) {
-            //printf("%02hhd '%c' not recognized as graph or space\n", buff[i],buff[i]);
+//            printf("%02hhd '%c' not recognized as graph or space\n", buff[i],buff[i]);
             return true;
+        } else {
+//            printf("=> %02X '%c'\n",buff[i],buff[i]);
         }
+    }
     return false;
 }
 
 //------------------------------------------------------------------------------
-inline void decrypt( const char *src, char *dst,  size_t len ) {
-    uint8_t key[16], iv[16];
-    memset(key,0,16); memset(iv,0,16);
-    key[0] = 'a'; key[15] = '5';
-    iv[0] = 'x'; iv[15]= '?';
+inline void decrypt_aes128( const uint8_t *src, uint8_t *dst,  size_t len,
+                            const uint8_t *key, uint8_t *iv ) {
 #ifdef ENABLE_SGX
-    sgx_aes_ctr_decrypt(&key, (const uint8_t*)src, len, iv, 128, (uint8_t*)dst);
+    sgx_aes_ctr_decrypt((uint8_t(*)[16])key, src, len, iv, 128, dst);
 #else
     CTR_Mode< AES >::Decryption d;
-    std::string recov, cipher(src,len);
+    std::string recov, cipher((const char*)src,len);
     d.SetKeyWithIV( key, sizeof(key), iv );
     StringSource( cipher, true, new StreamTransformationFilter(d,
                                                        new StringSink(recov)));
@@ -81,16 +100,15 @@ inline void decrypt( const char *src, char *dst,  size_t len ) {
 #endif
 }
 //------------------------------------------------------------------------------
-inline void encrypt( const char *src, char *dst, size_t len ) {
-    uint8_t key[16], iv[16];
-    memset(key,0,16); memset(iv,0,16);
-    key[0] = 'a'; key[15] = '5';
-    iv[0] = 'x'; iv[15]= '?';
+inline void encrypt_aes128( const uint8_t *src, uint8_t *dst, size_t len,
+                            const uint8_t *key, uint8_t *iv ) {
 #ifdef ENABLE_SGX
-    sgx_aes_ctr_encrypt(&key, (const uint8_t*)src, len, iv, 128, (uint8_t*)dst);
+    uint8_t i[16];
+    memcpy(i,iv,16); // sgx updates iv assuming `src` is a stream chunk
+    sgx_aes_ctr_encrypt((uint8_t(*)[16])key, src, len, i, 128, dst);
 #else
     CTR_Mode< AES >::Encryption e;
-    std::string cipher, plain(src,len);
+    std::string cipher, plain((const char*)src,len);
     e.SetKeyWithIV( key, sizeof(key), iv );
     StringSource( plain, true, new StreamTransformationFilter(e,
                                                        new StringSink(cipher)));
