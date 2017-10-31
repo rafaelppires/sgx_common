@@ -7,7 +7,7 @@
 #include <sgx_tcrypto.h>
 #endif
 
-#if defined(__cplusplus) && !defined(ENABLE_SGX)
+#if defined(__cplusplus) && !defined(ENABLE_SGX) // cxx && !sgx {
 #include <crypto++/rsa.h>
 #include <crypto++/aes.h>
 #include <crypto++/ccm.h>
@@ -18,7 +18,7 @@ using CryptoPP::CTR_Mode;
 using CryptoPP::StringSource;
 using CryptoPP::StringSink;
 using CryptoPP::StreamTransformationFilter;
-#endif // cpp && !sgx
+#endif // } cxx && !sgx
 
 #if defined(__cplusplus)
 namespace Crypto {
@@ -44,12 +44,23 @@ std::string sha256( const std::string& );
 std::string base64( const std::string& );
 
 }
+
+extern "C" {
 #endif // cpp
 
+void decrypt_aes128( const uint8_t *src, uint8_t *dst,  size_t len,
+                     const uint8_t *key, uint8_t *iv );
+void encrypt_aes128( const uint8_t *src, uint8_t *dst, size_t len,
+                     const uint8_t *key, uint8_t *iv );
+int encrypt_rsa( const uint8_t* plaintext, size_t plain_len,
+                  char* key, uint8_t* ciphertext, size_t cipher_len);
+
+#ifdef ENABLE_SGX
 //------------------------------------------------------------------------------
 inline bool isspace( uint8_t c ) {
     return c >= 0x09 && c <= 0x0D;
 }
+#endif
 
 //------------------------------------------------------------------------------
 inline bool isasciigraph( uint8_t c ) {
@@ -86,35 +97,10 @@ inline bool is_cipher( const uint8_t *buff, size_t len ) {
 }
 
 //------------------------------------------------------------------------------
-inline void decrypt_aes128( const uint8_t *src, uint8_t *dst,  size_t len,
-                            const uint8_t *key, uint8_t *iv ) {
-#ifdef ENABLE_SGX
-    sgx_aes_ctr_decrypt((uint8_t(*)[16])key, src, len, iv, 128, dst);
-#else
-    CTR_Mode< AES >::Decryption d;
-    std::string recov, cipher((const char*)src,len);
-    d.SetKeyWithIV( key, sizeof(key), iv );
-    StringSource( cipher, true, new StreamTransformationFilter(d,
-                                                       new StringSink(recov)));
-    memcpy(dst, recov.c_str(), std::min(len,recov.size()));
-#endif
+
+#if defined(__cplusplus)
 }
-//------------------------------------------------------------------------------
-inline void encrypt_aes128( const uint8_t *src, uint8_t *dst, size_t len,
-                            const uint8_t *key, uint8_t *iv ) {
-#ifdef ENABLE_SGX
-    uint8_t i[16];
-    memcpy(i,iv,16); // sgx updates iv assuming `src` is a stream chunk
-    sgx_aes_ctr_encrypt((uint8_t(*)[16])key, src, len, i, 128, dst);
-#else
-    CTR_Mode< AES >::Encryption e;
-    std::string cipher, plain((const char*)src,len);
-    e.SetKeyWithIV( key, sizeof(key), iv );
-    StringSource( plain, true, new StreamTransformationFilter(e,
-                                                       new StringSink(cipher)));
-    memcpy(dst, cipher.c_str(), std::min(len,cipher.size()));
 #endif
-}
 
 #endif // .h
 

@@ -1,6 +1,13 @@
 #include "sgx_cryptoall.h"
 
-#ifndef ENABLE_SGX
+#ifdef ENABLE_SGX           // sgx {
+#ifdef SGX_OPENSSL          //     openssl {
+#include <openssl/pem.h>
+#include <openssl/rsa.h>
+#include <openssl/sha.h>
+#include <openssl/evp.h>
+#endif                      //     } openssl
+#else                       // } sgx
 #include <fstream>
 #include <iostream>
 #include <crypto++/osrng.h>
@@ -25,6 +32,99 @@ using CryptoPP::Base64Decoder;
 using CryptoPP::Base64Encoder;
 using CryptoPP::ByteQueue;
 #endif
+
+//------------------------------------------------------------------------------
+void encrypt_aes128( const uint8_t *plain, uint8_t *cipher, size_t plen,
+                     const uint8_t *key, uint8_t *iv ) {
+#ifdef ENABLE_SGX
+#ifdef SGX_OPENSSL //     openssl {
+    int len;
+    int cipher_len;
+    EVP_CIPHER_CTX *ctx;
+    ctx = EVP_CIPHER_CTX_new();
+//    EVP_EncryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, key, iv);
+    EVP_EncryptInit_ex(ctx, EVP_aes_256_ctr(), NULL, key, iv);
+    EVP_EncryptUpdate(ctx, cipher, &len, plain, plen);
+    cipher_len = len;
+    EVP_EncryptFinal_ex(ctx, cipher + len, &len);
+    cipher_len += len;
+    EVP_CIPHER_CTX_free(ctx);
+#else              //     } openssl else intel sdk { 
+    uint8_t i[16];
+    memcpy(i,iv,16); // intel's aes updates iv assuming `src` is a stream chunk
+    sgx_aes_ctr_encrypt((uint8_t(*)[16])key, src, len, i, 128, dst);
+#endif             //     } intel sdk
+#else
+    CTR_Mode< AES >::Encryption e;
+    std::string cphr, pl((const char*)plain,plen);
+    e.SetKeyWithIV( key, sizeof(key), iv );
+    StringSource( plain, true, new StreamTransformationFilter(e,
+                                                       new StringSink(cphr)));
+    memcpy(cipher, cphr.c_str(), std::min(plen,cphr.size()));
+#endif
+}
+
+//------------------------------------------------------------------------------
+void decrypt_aes128( const uint8_t *cipher, uint8_t *plain,  size_t clen,
+                     const uint8_t *key, uint8_t *iv ) {
+#ifdef ENABLE_SGX  // sgx {
+#ifdef SGX_OPENSSL //     openssl {
+    EVP_CIPHER_CTX *ctx;
+    int len;
+    int plaintext_len;
+    ctx = EVP_CIPHER_CTX_new();
+    //EVP_DecryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, key, iv);
+    EVP_DecryptInit_ex(ctx, EVP_aes_256_ctr(), NULL, key, iv);
+    EVP_DecryptUpdate(ctx, plain, &len, cipher, clen);
+    plaintext_len = len;
+    EVP_DecryptFinal_ex(ctx, (plain) + len, &len);
+    plaintext_len += len;
+    EVP_CIPHER_CTX_free(ctx);
+#else              //     } openssl else intel sdk { 
+    sgx_aes_ctr_decrypt((uint8_t(*)[16])key, cipher, clen, iv, 128, plain);
+#endif             //     } intel sdk
+#else              // } sgx else crypto++ {
+    CTR_Mode< AES >::Decryption d;
+    std::string recov, ciph((const char*)cipher,clen);
+    d.SetKeyWithIV( key, sizeof(key), iv );
+    StringSource( ciph, true, new StreamTransformationFilter(d,
+                                                        new StringSink(recov)));
+    memcpy(plain, recov.c_str(), std::min(clen,recov.size()));
+#endif             // } crypto++
+}
+
+//------------------------------------------------------------------------------
+extern "C" { int printf( const char *f, ... ); }
+int encrypt_rsa( const uint8_t* plaintext, size_t plain_len,
+                 char* key, uint8_t* ciphertext, size_t cipher_len ) {
+#ifdef ENABLE_SGX
+#if 0
+    BIO *bio_buffer = NULL;
+    RSA *rsa = NULL;
+printf("(1)%s\n",key);
+    //bio_buffer = BIO_new_mem_buf((void*)key, /*-1*/strlen(key));
+    char oi[] = "oi";
+    bio_buffer = BIO_new_mem_buf((void*)oi, -1);
+printf("(2)\n");
+/*
+    PEM_read_bio_RSA_PUBKEY(bio_buffer, &rsa, 0, NULL);
+printf("(3)\n");
+    size_t rsa_min = RSA_size( rsa );
+    if( cipher_len < rsa_min ) {
+        return -rsa_min;
+    }
+printf("(4)\n");
+
+    int ciphertext_size = RSA_public_encrypt( plain_len, plaintext,
+                                              ciphertext,
+                                              rsa, RSA_PKCS1_PADDING );
+printf("(5)\n");
+    return ciphertext_size;
+*/
+#endif
+    return 0;
+#endif
+}
 
 //------------------------------------------------------------------------------
 namespace Crypto {
