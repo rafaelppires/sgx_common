@@ -86,7 +86,7 @@ sgx_errlist_t sgx_errlist[] = {
     },
     {
         SGX_ERROR_SERVICE_UNAVAILABLE,
-        "",
+        "AESM (application enclave service manager) didn't respond or the requested service is not supported",
         NULL
     }
 };
@@ -106,7 +106,7 @@ void print_error_message(sgx_status_t ret) {
         if(ret == sgx_errlist[idx].err) {
             if(NULL != sgx_errlist[idx].sug)
                 printf("Info: %s\n", sgx_errlist[idx].sug);
-            printf("Error: %s\n", sgx_errlist[idx].msg);
+            printf("Error (0x%x): %s\n", ret, sgx_errlist[idx].msg);
             break;
         }
     }

@@ -48,12 +48,14 @@ std::string base64( const std::string& );
 extern "C" {
 #endif // cpp
 
-void decrypt_aes128( const uint8_t *src, uint8_t *dst,  size_t len,
-                     const uint8_t *key, uint8_t *iv );
-void encrypt_aes128( const uint8_t *src, uint8_t *dst, size_t len,
-                     const uint8_t *key, uint8_t *iv );
+#define AES128 1
+#define AES256 2
+int decrypt_aes( char type, const uint8_t *src, uint8_t *dst,  size_t len,
+                 const uint8_t *key, uint8_t *iv );
+int encrypt_aes( char type, const uint8_t *src, uint8_t *dst, size_t len,
+                  const uint8_t *key, uint8_t *iv );
 int encrypt_rsa( const uint8_t* plaintext, size_t plain_len,
-                  char* key, uint8_t* ciphertext, size_t cipher_len);
+                 char* key, uint8_t* ciphertext, size_t cipher_len);
 
 #ifdef ENABLE_SGX
 //------------------------------------------------------------------------------

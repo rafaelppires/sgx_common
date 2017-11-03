@@ -34,63 +34,101 @@ using CryptoPP::ByteQueue;
 #endif
 
 //------------------------------------------------------------------------------
-void encrypt_aes128( const uint8_t *plain, uint8_t *cipher, size_t plen,
-                     const uint8_t *key, uint8_t *iv ) {
-#ifdef ENABLE_SGX
-#ifdef SGX_OPENSSL //     openssl {
+int encrypt_aes( char type, const uint8_t *plain, uint8_t *cipher, size_t plen,
+                 const uint8_t *key, uint8_t *iv ) {
+    int ret = 0;
+#ifdef SGX_OPENSSL          //     openssl {
     int len;
     int cipher_len;
     EVP_CIPHER_CTX *ctx;
     ctx = EVP_CIPHER_CTX_new();
-//    EVP_EncryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, key, iv);
-    EVP_EncryptInit_ex(ctx, EVP_aes_256_ctr(), NULL, key, iv);
+    if( type == AES128 )
+        EVP_EncryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, key, iv);
+    else if( type == AES256 )
+        EVP_EncryptInit_ex(ctx, EVP_aes_256_ctr(), NULL, key, iv);
+    else {
+        ret = -1;
+        goto getout;
+    }
     EVP_EncryptUpdate(ctx, cipher, &len, plain, plen);
     cipher_len = len;
     EVP_EncryptFinal_ex(ctx, cipher + len, &len);
     cipher_len += len;
+getout:
     EVP_CIPHER_CTX_free(ctx);
-#else              //     } openssl else intel sdk { 
+#elif defined( ENABLE_SGX ) //     } openssl else intel sdk { 
     uint8_t i[16];
     memcpy(i,iv,16); // intel's aes updates iv assuming `src` is a stream chunk
-    sgx_aes_ctr_encrypt((uint8_t(*)[16])key, src, len, i, 128, dst);
-#endif             //     } intel sdk
-#else
+    if( type != AES128 ) // not supported by intel sdk
+        ret = -1;
+    else if( SGX_SUCCESS ==
+               sgx_aes_ctr_encrypt((uint8_t(*)[16])key, src, len, i, 128, dst) )
+        ret = len;
+    else
+        ret = -2;
+#else                       //     } intel sdk else crypto++ {
+try{
+    size_t ksz = type == AES128 ? 16 : (type == AES256 ? 32 : 0);
     CTR_Mode< AES >::Encryption e;
     std::string cphr, pl((const char*)plain,plen);
-    e.SetKeyWithIV( key, sizeof(key), iv );
-    StringSource( plain, true, new StreamTransformationFilter(e,
+    if( !ksz ){ ret = -1; goto getout; }
+    e.SetKeyWithIV( key, ksz, iv );
+    StringSource( pl, true, new StreamTransformationFilter(e,
                                                        new StringSink(cphr)));
-    memcpy(cipher, cphr.c_str(), std::min(plen,cphr.size()));
-#endif
+    memcpy(cipher, cphr.c_str(), ret = std::min(plen,cphr.size()));
+}   catch(const CryptoPP::Exception& e)
+    {
+        std::cerr << e.what() << std::endl;
+        exit(1);
+    }
+
+getout:
+#endif                      //     } crypto++
+    return ret;
 }
 
 //------------------------------------------------------------------------------
-void decrypt_aes128( const uint8_t *cipher, uint8_t *plain,  size_t clen,
-                     const uint8_t *key, uint8_t *iv ) {
-#ifdef ENABLE_SGX  // sgx {
-#ifdef SGX_OPENSSL //     openssl {
+int decrypt_aes( char type, const uint8_t *cipher, uint8_t *plain, size_t clen,
+                 const uint8_t *key, uint8_t *iv ) {
+    int ret = 0;
+#ifdef SGX_OPENSSL          //     openssl {
     EVP_CIPHER_CTX *ctx;
     int len;
-    int plaintext_len;
     ctx = EVP_CIPHER_CTX_new();
-    //EVP_DecryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, key, iv);
-    EVP_DecryptInit_ex(ctx, EVP_aes_256_ctr(), NULL, key, iv);
+    if( type == AES128 )
+        EVP_DecryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, key, iv);
+    else if( type == AES256 )
+        EVP_DecryptInit_ex(ctx, EVP_aes_256_ctr(), NULL, key, iv);
+    else {
+        ret = -1; 
+        goto getout;
+    }
     EVP_DecryptUpdate(ctx, plain, &len, cipher, clen);
-    plaintext_len = len;
+    ret = len;
     EVP_DecryptFinal_ex(ctx, (plain) + len, &len);
-    plaintext_len += len;
+    ret += len;
+getout:
     EVP_CIPHER_CTX_free(ctx);
-#else              //     } openssl else intel sdk { 
-    sgx_aes_ctr_decrypt((uint8_t(*)[16])key, cipher, clen, iv, 128, plain);
-#endif             //     } intel sdk
-#else              // } sgx else crypto++ {
+#elif defined( ENABLE_SGX ) //     } openssl else intel sdk { 
+    if( type != AES128 ) // not supported by intel sdk
+        ret = -1;
+    else if( SGX_SUCCESS ==
+       sgx_aes_ctr_decrypt( (uint8_t(*)[16])key, cipher, clen, iv, 128, plain ))
+        ret = clen;
+    else
+        ret = -2;
+#else                       //     } intel sdk else crypto++ {
+    size_t ksz = type == AES128 ? 16 : (type == AES256 ? 32 : 0);
     CTR_Mode< AES >::Decryption d;
     std::string recov, ciph((const char*)cipher,clen);
-    d.SetKeyWithIV( key, sizeof(key), iv );
+    if( !ksz ){ ret = -1; goto getout; }
+    d.SetKeyWithIV( key, ksz, iv );
     StringSource( ciph, true, new StreamTransformationFilter(d,
                                                         new StringSink(recov)));
-    memcpy(plain, recov.c_str(), std::min(clen,recov.size()));
-#endif             // } crypto++
+    memcpy(plain, recov.c_str(), ret = std::min(clen,recov.size()));
+getout:
+#endif                      //     } crypto++
+    return ret;
 }
 
 //------------------------------------------------------------------------------
