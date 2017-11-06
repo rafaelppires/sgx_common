@@ -3,32 +3,19 @@
 
 #include <string>
 
-#ifdef ENABLE_SGX
-#include <sgx_tcrypto.h>
-#endif
-
-#if defined(__cplusplus) && !defined(ENABLE_SGX) // cxx && !sgx {
+#if defined(__cplusplus) && !defined(ENCLAVED) // cxx && !sgx {
 #include <crypto++/rsa.h>
-#include <crypto++/aes.h>
-#include <crypto++/ccm.h>
-#include <crypto++/filters.h>
-
-using CryptoPP::AES;
-using CryptoPP::CTR_Mode;
-using CryptoPP::StringSource;
-using CryptoPP::StringSink;
-using CryptoPP::StreamTransformationFilter;
 #endif // } cxx && !sgx
 
 #if defined(__cplusplus)
 namespace Crypto {
 
-#ifndef ENABLE_SGX
-typedef CryptoPP::RSA::PublicKey PubKey;
-typedef CryptoPP::RSA::PrivateKey PrvKey;
-#else
+#ifdef ENCLAVED
 typedef int PubKey; // temporary
 typedef int PrvKey; // temporary
+#else
+typedef CryptoPP::RSA::PublicKey PubKey;
+typedef CryptoPP::RSA::PrivateKey PrvKey;
 #endif
 
 std::string encrypt_aes( const std::string &plain );
@@ -57,7 +44,7 @@ int encrypt_aes( char type, const uint8_t *src, uint8_t *dst, size_t len,
 int encrypt_rsa( const uint8_t* plaintext, size_t plain_len,
                  char* key, uint8_t* ciphertext, size_t cipher_len);
 
-#ifdef ENABLE_SGX
+#ifdef ENCLAVED
 //------------------------------------------------------------------------------
 inline bool isspace( uint8_t c ) {
     return c >= 0x09 && c <= 0x0D;

@@ -1,13 +1,17 @@
 #include "sgx_cryptoall.h"
 
-#ifdef ENABLE_SGX           // sgx {
-#ifdef SGX_OPENSSL          //     openssl {
+#ifdef ENCLAVED
+#include <sgx_tcrypto.h>
+#endif
+
+#ifdef SGX_OPENSSL          // openssl {
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 #include <openssl/evp.h>
-#endif                      //     } openssl
-#else                       // } sgx
+#elif defined( ENCLAVED )   // } openssl else sgx {
+// maybe ipp stuff
+#else                       // } sgx else crypto++ {
 #include <fstream>
 #include <iostream>
 #include <crypto++/osrng.h>
@@ -31,7 +35,7 @@ using CryptoPP::CTR_Mode;
 using CryptoPP::Base64Decoder;
 using CryptoPP::Base64Encoder;
 using CryptoPP::ByteQueue;
-#endif
+#endif                      // } crypto++
 
 //------------------------------------------------------------------------------
 int encrypt_aes( char type, const uint8_t *plain, uint8_t *cipher, size_t plen,
@@ -56,7 +60,7 @@ int encrypt_aes( char type, const uint8_t *plain, uint8_t *cipher, size_t plen,
     cipher_len += len;
 getout:
     EVP_CIPHER_CTX_free(ctx);
-#elif defined( ENABLE_SGX ) //     } openssl else intel sdk { 
+#elif defined( ENCLAVED ) //     } openssl else intel sdk { 
     uint8_t i[16];
     memcpy(i,iv,16); // intel's aes updates iv assuming `src` is a stream chunk
     if( type != AES128 ) // not supported by intel sdk
@@ -109,7 +113,7 @@ int decrypt_aes( char type, const uint8_t *cipher, uint8_t *plain, size_t clen,
     ret += len;
 getout:
     EVP_CIPHER_CTX_free(ctx);
-#elif defined( ENABLE_SGX ) //     } openssl else intel sdk { 
+#elif defined( ENCLAVED ) //     } openssl else intel sdk { 
     if( type != AES128 ) // not supported by intel sdk
         ret = -1;
     else if( SGX_SUCCESS ==
@@ -135,7 +139,7 @@ getout:
 extern "C" { int printf( const char *f, ... ); }
 int encrypt_rsa( const uint8_t* plaintext, size_t plain_len,
                  char* key, uint8_t* ciphertext, size_t cipher_len ) {
-#ifdef ENABLE_SGX
+#ifdef ENCLAVED
 #if 0
     BIO *bio_buffer = NULL;
     RSA *rsa = NULL;
@@ -167,7 +171,7 @@ printf("(5)\n");
 //------------------------------------------------------------------------------
 namespace Crypto {
 //------------------------------------------------------------------------------
-#ifndef ENABLE_SGX
+#if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
 void Save(const std::string& filename, const BufferedTransformation& bt) {
     FileSink file(filename.c_str());
     bt.CopyTo(file);
@@ -188,7 +192,7 @@ void Decode(const std::string& filename, BufferedTransformation& bt) {
 #endif
 //------------------------------------------------------------------------------
 void SaveBase64PrivateKey(const std::string& filename, const PrvKey& key) {
-#ifndef ENABLE_SGX
+#if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
     ByteQueue queue;
     key.Save(queue);
     SaveBase64(filename, queue);
@@ -196,7 +200,7 @@ void SaveBase64PrivateKey(const std::string& filename, const PrvKey& key) {
 }
 //------------------------------------------------------------------------------
 void SaveBase64PublicKey(const std::string& filename, const PubKey& key) {
-#ifndef ENABLE_SGX
+#if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
     ByteQueue queue;
     key.Save(queue);
     SaveBase64(filename, queue);
@@ -204,7 +208,7 @@ void SaveBase64PublicKey(const std::string& filename, const PubKey& key) {
 }
 //------------------------------------------------------------------------------
 void decodeBase64PrivateKey(const std::string& filename, PrvKey& key) {
-#ifndef ENABLE_SGX
+#if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
     Base64Decoder decoder;
     Decode(filename, decoder);
     decoder.MessageEnd();
@@ -213,7 +217,7 @@ void decodeBase64PrivateKey(const std::string& filename, PrvKey& key) {
 }
 //------------------------------------------------------------------------------
 void decodeBase64PublicKey(const std::string& filename, PubKey& key) {
-#ifndef ENABLE_SGX
+#if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
     Base64Decoder decoder;
     Decode(filename, decoder);
     decoder.MessageEnd();
@@ -222,7 +226,7 @@ void decodeBase64PublicKey(const std::string& filename, PubKey& key) {
 }
 //------------------------------------------------------------------------------
 void generateKeysAndSave() {
-#ifndef ENABLE_SGX
+#if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
     CryptoPP::AutoSeededRandomPool rng;
 
     // Create Keys
@@ -254,7 +258,7 @@ std::string printable( const std::string &s ) {
 //------------------------------------------------------------------------------
 std::string encrypt_aes( const std::string &plain ) {
     std::string cipher;
-#ifndef ENABLE_SGX
+#if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
     try {
         byte key[16], iv[16];
         memset(key, 0, 16); memset(iv, 0, 16);
@@ -281,14 +285,14 @@ std::string encrypt_aes( const std::string &plain ) {
 
 //------------------------------------------------------------------------------
 void encrypt_aes_inline( std::string &plain ) {
-#ifndef ENABLE_SGX
+#ifndef ENCLAVED
     plain = encrypt_aes(plain);
 #endif
 }
 
 //------------------------------------------------------------------------------
 void decrypt_aes_inline( std::string &cipher ) {
-#ifndef ENABLE_SGX
+#ifndef ENCLAVED
     cipher = decrypt_aes(cipher);
 #endif
 }
@@ -296,7 +300,7 @@ void decrypt_aes_inline( std::string &cipher ) {
 //------------------------------------------------------------------------------
 std::string decrypt_aes( const std::string &cipher ) {
     std::string plain;
-#ifndef ENABLE_SGX
+#if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
     try {
         byte key[16], iv[16];
         memset(key, 0, 16); memset(iv, 0, 16);
@@ -322,7 +326,7 @@ std::string decrypt_aes( const std::string &cipher ) {
 //------------------------------------------------------------------------------
 std::string encrypt_rsa( const PubKey &pubkey, const std::string &plain ) {
     std::string cipher;
-#ifndef ENABLE_SGX
+#if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
     CryptoPP::AutoSeededRandomPool rng;
     CryptoPP::RSAES_OAEP_SHA_Encryptor e(pubkey);
     StringSource ss1( plain, true,
@@ -334,7 +338,7 @@ std::string encrypt_rsa( const PubKey &pubkey, const std::string &plain ) {
 //------------------------------------------------------------------------------
 std::string decrypt_rsa( const PrvKey &prvkey, const std::string &cipher ) {
     std::string recovered;
-#ifndef ENABLE_SGX
+#if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
     CryptoPP::AutoSeededRandomPool rng;
     CryptoPP::RSAES_OAEP_SHA_Decryptor d(prvkey);
 
@@ -347,14 +351,18 @@ std::string decrypt_rsa( const PrvKey &prvkey, const std::string &cipher ) {
 //------------------------------------------------------------------------------
 std::string sha256( const std::string &data ) {
     std::string digest;
-#ifndef ENABLE_SGX
+#if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
     CryptoPP::SHA256 hash;
     StringSource foo( data, true,
         new CryptoPP::HashFilter(hash, new CryptoPP::StringSink(digest))
     );
 #else
     uint8_t hash[32];
+#ifdef ENCLAVED // intel
     sgx_sha256_msg( (const uint8_t*)data.c_str(), data.size(), &hash);
+#else // openssl
+    SHA256((const uint8_t*)data.c_str(), data.size(), hash);
+#endif
     digest = std::string((char*)hash,32);
 #endif
     return digest;
@@ -363,7 +371,7 @@ std::string sha256( const std::string &data ) {
 //------------------------------------------------------------------------------
 std::string base64( const std::string &data ) {
     std::string ret;
-#ifndef ENABLE_SGX
+#if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
     StringSource ssrc( data, true /*pump all*/,
                        new Base64Encoder( new StringSink(ret) ) );
 #endif
