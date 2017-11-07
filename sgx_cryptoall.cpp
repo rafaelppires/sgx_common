@@ -66,8 +66,8 @@ getout:
     if( type != AES128 ) // not supported by intel sdk
         ret = -1;
     else if( SGX_SUCCESS ==
-               sgx_aes_ctr_encrypt((uint8_t(*)[16])key, src, len, i, 128, dst) )
-        ret = len;
+               sgx_aes_ctr_encrypt((uint8_t(*)[16])key, plain, plen, i, 128, cipher) )
+        ret = plen;
     else
         ret = -2;
 #else                       //     } intel sdk else crypto++ {
