@@ -81,6 +81,7 @@ int fputc(int,FILE *);
 char *fgets(char *__restrict, int, FILE *__restrict);
 int fprintf(FILE *__restrict, const char *__restrict, ...);
 int vfprintf (FILE *, const char *, va_list);
+int snprintf( char *str, size_t sz, const char *fmt, ... );
 size_t fread(void *__restrict, size_t, size_t, FILE *__restrict);
 size_t fwrite(const void *__restrict, size_t, size_t, FILE *__restrict);
 

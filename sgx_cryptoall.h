@@ -30,6 +30,10 @@ void decodeBase64PrivateKey(const std::string& filename, PrvKey& key);
 std::string sha256( const std::string& );
 std::string base64( const std::string& );
 
+#ifdef ENCLAVED
+std::string sealEnclave( const std::string &src );
+std::string sealSigner( const std::string &src );
+#endif
 }
 
 extern "C" {
@@ -43,6 +47,10 @@ int encrypt_aes( char type, const uint8_t *src, uint8_t *dst, size_t len,
                   const uint8_t *key, uint8_t *iv );
 int encrypt_rsa( const uint8_t* plaintext, size_t plain_len,
                  char* key, uint8_t* ciphertext, size_t cipher_len);
+#ifdef ENCLAVED
+int seal_signer ( const uint8_t *src, size_t srclen, void **sealed );
+int seal_enclave( const uint8_t *src, size_t srclen, void **sealed );
+#endif
 
 #ifdef ENCLAVED
 //------------------------------------------------------------------------------

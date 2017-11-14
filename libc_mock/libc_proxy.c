@@ -126,6 +126,16 @@ int vfprintf (FILE *f, const char *format, va_list v) {
 }
 
 //------------------------------------------------------------------------------
+int snprintf( char *str, size_t sz, const char *fmt, ... ) {
+    int ret;
+    va_list ap;
+    va_start(ap, fmt);
+    ret = vsnprintf(str,sz,fmt,ap);
+    va_end(ap);
+    return ret;
+}
+
+//------------------------------------------------------------------------------
 size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream) {
     size_t ret = fmock_fread(ptr,size,nmemb,stream);
 #ifdef TRACE_LIBC_CALLS
