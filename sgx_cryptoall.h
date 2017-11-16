@@ -33,6 +33,7 @@ std::string base64( const std::string& );
 #ifdef ENCLAVED
 std::string sealEnclave( const std::string &src );
 std::string sealSigner( const std::string &src );
+std::string unseal( const std::string &src );
 #endif
 }
 
@@ -48,8 +49,15 @@ int encrypt_aes( char type, const uint8_t *src, uint8_t *dst, size_t len,
 int encrypt_rsa( const uint8_t* plaintext, size_t plain_len,
                  char* key, uint8_t* ciphertext, size_t cipher_len);
 #ifdef ENCLAVED
-int seal_signer ( const uint8_t *src, size_t srclen, void **sealed );
-int seal_enclave( const uint8_t *src, size_t srclen, void **sealed );
+/** output buffers are all allocated inside these functions
+    it is the caller's responsibility to free them
+    return: the size of sealed or unsealed data */
+int seal_signer ( const uint8_t *src, size_t srclen, void **sealed /* out */ );
+int seal_enclave( const uint8_t *src, size_t srclen, void **sealed /* out */ );
+int unseal( const uint8_t *src /* in, len info is inside */, 
+            void **unsealed /* out, cannot be NULL */,
+            void **mactxt /* out, optional - may be NULL */, 
+            size_t *txt_len /* out, optional - may be NULL */ );
 #endif
 
 #ifdef ENCLAVED
