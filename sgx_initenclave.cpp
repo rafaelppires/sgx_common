@@ -80,3 +80,12 @@ int initialize_enclave( sgx_enclave_id_t &global_eid,
 }
 
 
+//------------------------------------------------------------------------------
+int destroy_enclave(sgx_enclave_id_t eid) {
+  if( sgx_destroy_enclave(eid) != SGX_SUCCESS ) {
+    fprintf(stderr, "App: Error: destroy_enclave() < 0.");
+    return -1;
+  }
+  return 0;
+}
+
