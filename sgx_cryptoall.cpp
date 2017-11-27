@@ -2,6 +2,9 @@
 
 #ifdef ENCLAVED
 #include <sgx_tcrypto.h>
+//#include <sgx_key.h>
+#include <sgx_tseal.h>
+#include <libc_mock/libcpp_mock.h>
 #endif
 
 #ifdef SGX_OPENSSL          // openssl {
@@ -37,6 +40,70 @@ using CryptoPP::Base64Encoder;
 using CryptoPP::ByteQueue;
 #endif                      // } crypto++
 
+//------------------------------------------------------------------------------
+#ifdef ENCLAVED
+static int seal_common( uint16_t policy, 
+                        const uint8_t *src, size_t srclen, void **sealed ) {
+    std::string mactxt;
+    size_t sz;
+    if( (sz = sgx_calc_sealed_data_size(mactxt.size(),srclen)) == 0xFFFFFFFF )
+        return -1;
+
+    *sealed = malloc( sz ); // warning: caller frees it
+    sgx_attributes_t attr;
+    attr.flags = 0xFF0000000000000BULL;
+    attr.xfrm  = 0;
+    if( sgx_seal_data_ex( policy, attr, 0xF0000000, 0, NULL, srclen, src, 
+                            sz, (sgx_sealed_data_t*)*sealed ) != SGX_SUCCESS ) {
+        free( *sealed );
+        *sealed = 0;
+        return -2;
+    }
+    return sz;
+}
+
+int seal_signer ( const uint8_t *src, size_t srclen, void **sealed ) {
+    seal_common( SGX_KEYPOLICY_MRSIGNER, src, srclen, sealed );
+
+}
+
+int seal_enclave( const uint8_t *src, size_t srclen, void **sealed ) {
+    seal_common( SGX_KEYPOLICY_MRENCLAVE, src, srclen, sealed );
+}
+
+extern "C" { extern int printf(const char*,...); }
+int unseal( const uint8_t *src, void **unsealed, 
+            void **mactxt, size_t *txt_len ) {
+    void *mactxt_aux = 0;
+    uint32_t mactxt_len =sgx_get_add_mac_txt_len((const sgx_sealed_data_t*)src),
+            decryp_len = sgx_get_encrypt_txt_len((const sgx_sealed_data_t*)src);
+
+    *unsealed = malloc( decryp_len );
+    if( txt_len == 0 ) mactxt = 0;
+    if( mactxt )
+        *mactxt = malloc( mactxt_len );
+    else {
+        mactxt = &mactxt_aux;
+        mactxt_len = 0;
+    }
+
+    if( sgx_unseal_data( (const sgx_sealed_data_t*)src, 
+                         (uint8_t*)*mactxt, &mactxt_len, 
+                         (uint8_t*)*unsealed, &decryp_len ) != SGX_SUCCESS ) {
+        free( *unsealed );
+        free( *mactxt );
+        *unsealed = *mactxt = 0;
+        return -1;
+    }
+
+    *unsealed = realloc( *unsealed, decryp_len );
+    if( *mactxt ) {    
+        *mactxt   = realloc( *mactxt, mactxt_len );
+        *txt_len  = mactxt_len;
+    }
+    return decryp_len;
+}
+#endif
 //------------------------------------------------------------------------------
 int encrypt_aes( char type, const uint8_t *plain, uint8_t *cipher, size_t plen,
                  const uint8_t *key, uint8_t *iv ) {
@@ -171,6 +238,44 @@ printf("(5)\n");
 //------------------------------------------------------------------------------
 namespace Crypto {
 //------------------------------------------------------------------------------
+#ifdef ENCLAVED
+std::string sealSigner( const std::string &src ) {
+    std::string ret;
+    void *sealed;
+    size_t sz;
+    if( (sz = seal_signer( (const uint8_t*)src.c_str(), src.size(), &sealed )) 
+                                                                         > 0 ) {
+        ret = std::string( (char*)sealed, sz );
+        free( sealed );
+    }
+    return ret;
+}
+
+std::string sealEnclave( const std::string &src ) {
+    std::string ret;
+    void *sealed;
+    size_t sz;
+    if( (sz = seal_enclave( (const uint8_t*)src.c_str(), src.size(), &sealed ))
+                                                                         > 0 ) {
+        ret = std::string( (char*)sealed, sz );
+        free( sealed );
+    }
+    return ret;
+}
+
+std::string unseal( const std::string &src ) {
+    std::string ret;
+    void *unsealed;
+    int len = ::unseal( (const uint8_t*)src.c_str(), &unsealed, 0, 0 );
+    if( len > 0 ) {
+        ret = std::string( (const char*)unsealed, len );
+        free( unsealed );
+    }
+    return ret;
+}
+#endif
+
+//------------------------------------------------------------------------------
 #if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
 void Save(const std::string& filename, const BufferedTransformation& bt) {
     FileSink file(filename.c_str());
@@ -241,17 +346,35 @@ void generateKeysAndSave() {
 
 //------------------------------------------------------------------------------
 std::string printable( const std::string &s ) {
-    std::string ret;
+    std::string ret, orep = " [+", crep = "] ";
     bool h = false;
+    size_t count = 0;
+    char last;
     for(std::string::const_iterator it=s.begin();it!=s.end(); ++it) {
         if( isasciigraph(*it) ) {
             if( h ) { ret += "\033[0m"; h = false; }
+            if( count != 0 ) {
+                ret += orep + std::to_string(count) + crep;
+                count = 0;
+            }
             ret += *it;
         } else {
             if( !h ) { ret += "\033[38;5;229m"; h = true; }
-            ret += hexchar(*it);
+            //if( !ret.empty() && ret.at(ret.size()-1) == *it ) {
+            //printf("%d %d\n", *it, ret[ret.size()-1] );
+            if( !ret.empty() && last == *it ) {
+                ++count;
+            } else {
+                if( count != 0 ) {
+                    ret += orep + std::to_string(count) + crep;
+                    count = 0; 
+                }
+                ret += hexchar(*it);
+            }
         }
+        last = *it;
     }
+    if( count != 0 ) ret += orep + std::to_string(count) + crep;
     if( h ) ret += "\033[0m";;
     return ret;
 }

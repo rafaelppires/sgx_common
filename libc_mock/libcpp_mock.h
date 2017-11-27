@@ -2,11 +2,19 @@
 #define _LIBCPP_MOCK_H_
 
 #include <string>
+#include <libc_mock/libc_proxy.h>
 
 namespace std {
 
 struct ostream {};
 struct istream {};
+
+template< typename T >
+std::string to_string( T x ) {
+    char buf[1024];
+    snprintf(buf, sizeof(buf), "%d", x);
+    return std::string(buf);
+}
 
 struct stringstream {
     stringstream () {}
