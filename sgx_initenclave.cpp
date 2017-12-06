@@ -4,6 +4,7 @@
 #include <string.h>
 #include <pwd.h>
 #include <sgx_errlist.h>
+#include <sgx_utils_rp.h>
 
 //------------------------------------------------------------------------------
 /* Initialize the enclave:
@@ -35,16 +36,16 @@ int initialize_enclave( sgx_enclave_id_t &global_eid,
 
     FILE *fp = fopen(token_path, "rb");
     if (fp == NULL && (fp = fopen(token_path, "wb")) == NULL) {
-        printf("Warning: Failed to create/open the launch token file \"%s\".\n", token_path);
+        printinfo( LLWARN, "Warning: Failed to create/open the launch token file \"%s\".\n", token_path);
     }
-    printf("token_path: %s\n", token_path);
+    printinfo( LLDEBG, "token_path: %s\n", token_path);
     if (fp != NULL) {
         /* read the token from saved file */
         size_t read_num = fread(token, 1, sizeof(sgx_launch_token_t), fp);
         if (read_num != 0 && read_num != sizeof(sgx_launch_token_t)) {
             /* if token is invalid, clear the buffer */
             memset(&token, 0x0, sizeof(sgx_launch_token_t));
-            printf("Warning: Invalid launch token read from \"%s\".\n", token_path);
+            printinfo( LLWARN, "Warning: Invalid launch token read from \"%s\".\n", token_path);
         }
     }
 
@@ -73,7 +74,7 @@ int initialize_enclave( sgx_enclave_id_t &global_eid,
     if (fp == NULL) return 0;
     size_t write_num = fwrite(token, 1, sizeof(sgx_launch_token_t), fp);
     if (write_num != sizeof(sgx_launch_token_t))
-        printf("Warning: Failed to save launch token to \"%s\".\n", token_path);
+        printinfo( LLWARN, "Warning: Failed to save launch token to \"%s\".\n", token_path);
     fclose(fp);
 
     return 0;
@@ -83,7 +84,7 @@ int initialize_enclave( sgx_enclave_id_t &global_eid,
 //------------------------------------------------------------------------------
 int destroy_enclave(sgx_enclave_id_t eid) {
   if( sgx_destroy_enclave(eid) != SGX_SUCCESS ) {
-    fprintf(stderr, "App: Error: destroy_enclave() < 0.");
+    printinfo( LLCRIT, "App: Error: destroy_enclave() < 0.");
     return -1;
   }
   return 0;
