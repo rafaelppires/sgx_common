@@ -30,10 +30,14 @@ int set_rand_seed() {
     FILE *f = fopen("/dev/urandom", "r");
     if( f == NULL ) return -1;
     unsigned seed;
-    fread( &seed, sizeof(seed), 1, f );
+    size_t ret = fread( &seed, sizeof(seed), 1, f );
     fclose(f);
     srand(seed);
-    return 0;
+
+    if( ret == sizeof(seed) )
+        return 0;
+    else
+        return 1;
 }
 
 //------------------------------------------------------------------------------
