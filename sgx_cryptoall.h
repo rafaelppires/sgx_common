@@ -2,6 +2,7 @@
 #define _CRYPTO_ALL_H_
 
 #include <string>
+#include <stdint.h>
 
 #if defined(__cplusplus) && !defined(ENCLAVED) // cxx && !sgx {
 #include <crypto++/rsa.h>

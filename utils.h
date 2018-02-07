@@ -47,7 +47,7 @@ public:
     }
     void begin();
     double end();
-    void print_summary(const std::string &);
+    void print_summary(const std::string &title = "");
     unsigned count();
 
 private:

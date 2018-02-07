@@ -15,7 +15,7 @@ double Stats::end() {
 }
 
 //------------------------------------------------------------------------------
-void Stats::print_summary( const std::string &title = "" ) {
+void Stats::print_summary( const std::string &title ) {
     //if( title.size() ) std::cout << title << "\n";
     //std::cout << "Samples: " << boost::accumulators::count(accum_) << "\n"
     //    << "Mean: " << mean(accum_) << "\n"
@@ -68,8 +68,7 @@ void Logger::init( std::string outfname ) {
 
     cachemiss_fd = perf_event_open(&pe1, 0, -1, -1, 8);
     if (cachemiss_fd == -1) {
-        fprintf(stderr, "Error opening (Cache misses profiler)\n");
-        exit(EXIT_FAILURE);
+        fprintf(stderr, "Error opening (Cache misses profiler). Ignoring...\n");
     } else {
         pe2.type = PERF_TYPE_HARDWARE;
         pe2.size = sizeof(struct perf_event_attr);
@@ -95,8 +94,10 @@ void Logger::close() {
 
 //------------------------------------------------------------------------------
 void Logger::start() {
-    ioctl(cachemiss_fd, PERF_EVENT_IOC_RESET, 0);
-    ioctl(cachemiss_fd, PERF_EVENT_IOC_ENABLE, 0);
+    if( cachemiss_fd != -1 ) {
+        ioctl(cachemiss_fd, PERF_EVENT_IOC_RESET, 0);
+        ioctl(cachemiss_fd, PERF_EVENT_IOC_ENABLE, 0);
+    }
     ioctl(cacheref_fd, PERF_EVENT_IOC_RESET, 0);
     ioctl(cacheref_fd, PERF_EVENT_IOC_ENABLE, 0);
 
@@ -109,13 +110,17 @@ void Logger::finish() {
     long long misscount, refcount;
     double time = timing_.end();
     ioctl(cacheref_fd, PERF_EVENT_IOC_DISABLE, 0);
-    ioctl(cachemiss_fd, PERF_EVENT_IOC_DISABLE, 0);
-    size_t r1 = read(cachemiss_fd, &misscount, sizeof(long long)),
+
+    size_t r1 = -1,
            r2 = read(cacheref_fd, &refcount, sizeof(long long));
+
+    if( cachemiss_fd != -1 ) {
+        ioctl(cachemiss_fd, PERF_EVENT_IOC_DISABLE, 0);
+        r1 = read(cachemiss_fd, &misscount, sizeof(long long));
+    }
 
     if( r1 == -1 || r2 == -1 ) {
        fprintf(stderr, "Couldn't read counters %lu %lu\n", r1, r2);
-       exit(EXIT_FAILURE);
     }
 
     std::ifstream /*stat("/proc/self/stat"),*/ statm("/proc/self/statm");
