@@ -19,17 +19,18 @@ typedef CryptoPP::RSA::PublicKey PubKey;
 typedef CryptoPP::RSA::PrivateKey PrvKey;
 #endif
 
-std::string encrypt_aes( const std::string &plain );
-void encrypt_aes_inline( std::string & );
-void decrypt_aes_inline( std::string & );
-std::string decrypt_aes( const std::string &cipher );
+std::string encrypt_aes( const std::string &key, const std::string &plain );
+void encrypt_aes_inline( const std::string &key, std::string &plain );
+void decrypt_aes_inline( const std::string &key, std::string & );
+std::string decrypt_aes( const std::string &key, const std::string &cipher );
 std::string encrypt_rsa( const PubKey &pubkey, const std::string &plain );
 std::string decrypt_rsa( const PrvKey &prvkey, const std::string &cipher );
 std::string printable( const std::string &s );
 void decodeBase64PublicKey(const std::string& filename, PubKey& key);
 void decodeBase64PrivateKey(const std::string& filename, PrvKey& key);
 std::string sha256( const std::string& );
-std::string base64( const std::string& );
+std::string b64_encode( const std::string& );
+std::string b64_decode( const std::string& );
 
 #ifdef ENCLAVED
 std::string sealEnclave( const std::string &src );

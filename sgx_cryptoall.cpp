@@ -379,19 +379,25 @@ std::string printable( const std::string &s ) {
     return ret;
 }
 //------------------------------------------------------------------------------
-std::string encrypt_aes( const std::string &plain ) {
+std::string encrypt_aes( const std::string &k, const std::string &plain ) {
     std::string cipher;
+    unsigned char key[32], iv[16];
 #if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
     try {
-        byte key[16], iv[16];
-        memset(key, 0, 16); memset(iv, 0, 16);
-        key[0] = 'a'; key[15] = '5';
-        iv[0] = 'x'; iv[15] = '?';
+        memset(key, 0, sizeof(key));
+        memset(iv, 0, sizeof(iv));
+
+        memcpy( key, k.c_str(), std::min(sizeof(key), k.size()) );
+        for( uint8_t i = 0; i < sizeof(iv); i += sizeof(int) ) 
+            *(int*)&iv[i] = rand();
+
+        //key[0] = 'a'; key[15] = '5';
+        //iv[0] = 'x'; iv[15] = '?';
 
         //std::cout << "plain text: " << plain << std::endl;
 
         CTR_Mode< AES >::Encryption e;
-        e.SetKeyWithIV(key, sizeof(key), iv);
+        e.SetKeyWithIV(key, k.size() > 16 ? 32 : 16, iv);
 
         // The StreamTransformationFilter adds padding
         //  as required. ECB and CBC Mode must be padded
@@ -403,40 +409,42 @@ std::string encrypt_aes( const std::string &plain ) {
         exit(1);
     }
 #endif
-    return cipher;
+    return std::string((const char*)iv,sizeof(iv)) + cipher;
 }
 
 //------------------------------------------------------------------------------
-void encrypt_aes_inline( std::string &plain ) {
+void encrypt_aes_inline( const std::string &key, std::string &plain ) {
 #ifndef ENCLAVED
-    plain = encrypt_aes(plain);
+    plain = encrypt_aes(key,plain);
 #endif
 }
 
 //------------------------------------------------------------------------------
-void decrypt_aes_inline( std::string &cipher ) {
+void decrypt_aes_inline( const std::string &key, std::string &cipher ) {
 #ifndef ENCLAVED
-    cipher = decrypt_aes(cipher);
+    cipher = decrypt_aes(key, cipher);
 #endif
 }
 
 //------------------------------------------------------------------------------
-std::string decrypt_aes( const std::string &cipher ) {
+std::string decrypt_aes( const std::string &k, const std::string &cipher ) {
     std::string plain;
 #if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
+    if( cipher.size() > 16 )
     try {
-        byte key[16], iv[16];
-        memset(key, 0, 16); memset(iv, 0, 16);
-        key[0] = 'a'; key[15] = '5';
-        iv[0] = 'x'; iv[15] = '?';
+        byte key[32], iv[16];
+        memset(key, 0, sizeof(key));
+        memset(iv, 0, sizeof(iv));
+        memcpy(key, k.c_str(), std::min(k.size(),sizeof(key)));
+        memcpy(iv, cipher.c_str(), sizeof(iv));
 
         CTR_Mode< AES >::Decryption d;
-        d.SetKeyWithIV(key, sizeof(key), iv);
+        d.SetKeyWithIV(key, k.size() > 16 ? 32 : 16, iv);
 
         // The StreamTransformationFilter adds padding
         //  as required. ECB and CBC Mode must be padded
         //  to the block size of the cipher.
-        StringSource(cipher, true,
+        StringSource(cipher.substr(sizeof(iv)), true,
                     new StreamTransformationFilter(d, new StringSink(plain) ) );
     } catch(const CryptoPP::Exception& e) {
         std::cerr << e.what() << std::endl;
@@ -492,11 +500,21 @@ std::string sha256( const std::string &data ) {
 }
 
 //------------------------------------------------------------------------------
-std::string base64( const std::string &data ) {
+std::string b64_encode( const std::string &data ) {
     std::string ret;
 #if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
     StringSource ssrc( data, true /*pump all*/,
                        new Base64Encoder( new StringSink(ret) ) );
+#endif
+    return ret;
+}
+
+//------------------------------------------------------------------------------
+std::string b64_decode( const std::string &data ) {
+    std::string ret;
+#if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
+    StringSource ssrc( data, true /*pump all*/,
+                       new Base64Decoder( new StringSink(ret) ) );
 #endif
     return ret;
 }
