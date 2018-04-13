@@ -2,7 +2,7 @@
 
 #ifdef ENCLAVED
 #include <sgx_tcrypto.h>
-//#include <sgx_key.h>
+#include <sgx_trts.h>
 #include <sgx_tseal.h>
 #include <libc_mock/libcpp_mock.h>
 #endif
@@ -382,20 +382,17 @@ std::string printable( const std::string &s ) {
 std::string encrypt_aes( const std::string &k, const std::string &plain ) {
     std::string cipher;
     unsigned char key[32], iv[16];
+    memset(key, 0, sizeof(key));
+    memset(iv, 0, sizeof(iv));
+
+    memcpy( key, k.c_str(), std::min(sizeof(key), k.size()) );
+
 #if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
+    // Creates a rand IV
+    for( uint8_t i = 0; i < sizeof(iv); i += sizeof(int) ) 
+        *(int*)&iv[i] = rand();
+
     try {
-        memset(key, 0, sizeof(key));
-        memset(iv, 0, sizeof(iv));
-
-        memcpy( key, k.c_str(), std::min(sizeof(key), k.size()) );
-        for( uint8_t i = 0; i < sizeof(iv); i += sizeof(int) ) 
-            *(int*)&iv[i] = rand();
-
-        //key[0] = 'a'; key[15] = '5';
-        //iv[0] = 'x'; iv[15] = '?';
-
-        //std::cout << "plain text: " << plain << std::endl;
-
         CTR_Mode< AES >::Encryption e;
         e.SetKeyWithIV(key, k.size() > 16 ? 32 : 16, iv);
 
@@ -408,36 +405,45 @@ std::string encrypt_aes( const std::string &k, const std::string &plain ) {
         std::cerr << e.what() << std::endl;
         exit(1);
     }
+#else
+    // Creates a rand IV
+    sgx_read_rand( iv, sizeof(iv) );
+
+    uint8_t *buff = new uint8_t[plain.size()];
+    int ret = ::encrypt_aes( k.size() > 16 ? AES256 : AES128, 
+                             (const uint8_t*)plain.c_str(), buff, plain.size(),
+                             key, iv );
+    if( ret == plain.size() )
+        cipher = std::string( (char*)buff, ret );
+    delete[] buff;
 #endif
+
+    // First 16 bytes corresponds to the generated IV
     return std::string((const char*)iv,sizeof(iv)) + cipher;
 }
 
 //------------------------------------------------------------------------------
 void encrypt_aes_inline( const std::string &key, std::string &plain ) {
-#ifndef ENCLAVED
     plain = encrypt_aes(key,plain);
-#endif
 }
 
 //------------------------------------------------------------------------------
 void decrypt_aes_inline( const std::string &key, std::string &cipher ) {
-#ifndef ENCLAVED
     cipher = decrypt_aes(key, cipher);
-#endif
 }
 
 //------------------------------------------------------------------------------
 std::string decrypt_aes( const std::string &k, const std::string &cipher ) {
     std::string plain;
-#if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
-    if( cipher.size() > 16 )
-    try {
-        byte key[32], iv[16];
-        memset(key, 0, sizeof(key));
-        memset(iv, 0, sizeof(iv));
-        memcpy(key, k.c_str(), std::min(k.size(),sizeof(key)));
-        memcpy(iv, cipher.c_str(), sizeof(iv));
+    unsigned char key[32], iv[16];
+    memset(key, 0, sizeof(key));
+    memset(iv, 0, sizeof(iv));
+    memcpy(key, k.c_str(),      std::min(k.size(),sizeof(key)));
+    memcpy(iv,  cipher.c_str(), std::min(cipher.size(),sizeof(iv)));
 
+    if( cipher.size() > 16 ) {
+#if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
+    try {
         CTR_Mode< AES >::Decryption d;
         d.SetKeyWithIV(key, k.size() > 16 ? 32 : 16, iv);
 
@@ -450,7 +456,17 @@ std::string decrypt_aes( const std::string &k, const std::string &cipher ) {
         std::cerr << e.what() << std::endl;
         exit(1);
     }
+#else
+    size_t sz = cipher.size()-16;
+    uint8_t *buff = new uint8_t[sz];
+    int ret = ::decrypt_aes( k.size() > 16 ? AES256 : AES128,
+                             (const uint8_t*)cipher.c_str()+16, buff, sz,
+                             key, iv ); 
+    if( ret == sz )
+        plain = std::string( (char*)buff, sz );
+    delete[] buff;
 #endif
+    }
     return plain;
 }
 
