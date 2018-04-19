@@ -63,12 +63,12 @@ static int seal_common( uint16_t policy,
 }
 
 int seal_signer ( const uint8_t *src, size_t srclen, void **sealed ) {
-    seal_common( SGX_KEYPOLICY_MRSIGNER, src, srclen, sealed );
+    return seal_common( SGX_KEYPOLICY_MRSIGNER, src, srclen, sealed );
 
 }
 
 int seal_enclave( const uint8_t *src, size_t srclen, void **sealed ) {
-    seal_common( SGX_KEYPOLICY_MRENCLAVE, src, srclen, sealed );
+    return seal_common( SGX_KEYPOLICY_MRENCLAVE, src, srclen, sealed );
 }
 
 extern "C" { extern int printf(const char*,...); }
