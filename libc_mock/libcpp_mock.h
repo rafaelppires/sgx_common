@@ -10,14 +10,14 @@ struct ostream {};
 struct istream {};
 
 template< typename T >
-std::string to_string( T x ) {
+inline std::string to_string( T x ) {
     char buf[100];
     snprintf(buf, sizeof(buf), "%d", x);
     return std::string(buf);
 }
 
 template<>
-std::string to_string( long unsigned int x ) {
+inline std::string to_string( long unsigned int x ) {
     char buf[100];
     snprintf(buf, sizeof(buf), "%lu", x);
     return std::string(buf);
