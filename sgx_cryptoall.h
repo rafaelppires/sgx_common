@@ -63,10 +63,12 @@ int unseal( const uint8_t *src /* in, len info is inside */,
 #endif
 
 #ifdef ENCLAVED
+#ifndef _LIBCPP_CCTYPE
 //------------------------------------------------------------------------------
 inline bool isspace( uint8_t c ) {
     return c >= 0x09 && c <= 0x0D;
 }
+#endif
 #endif
 
 //------------------------------------------------------------------------------

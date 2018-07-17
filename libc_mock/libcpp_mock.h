@@ -6,6 +6,9 @@
 
 namespace std {
 
+using ::lconv;
+using ::localeconv;
+
 struct ostream {};
 struct istream {};
 

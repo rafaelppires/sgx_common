@@ -255,9 +255,32 @@ char *setlocale (int category, const char *locale) {
 
 struct lconv *localeconv(void) {
     static struct lconv l;
-    l.decimal_point=".";
-    l.thousands_sep=l.grouping=l.int_curr_symbol=l.currency_symbol=l.mon_decimal_point=l.mon_thousands_sep=l.mon_grouping=l.positive_sign=l.negative_sign="";
-    l.int_frac_digits=l.frac_digits=l.p_cs_precedes=l.p_sep_by_space=l.n_cs_precedes=l.n_sep_by_space=l.p_sign_posn=l.n_sign_posn=l.int_p_cs_precedes=l.int_p_sep_by_space=l.int_n_cs_precedes=l.int_n_sep_by_space=l.int_p_sign_posn=l.int_n_sign_posn=127; 
+    l.decimal_point =
+    l.mon_decimal_point = ".";
+    l.thousands_sep = 
+    l.grouping = 
+    l.int_curr_symbol = 
+    l.currency_symbol = 
+    l.mon_thousands_sep = 
+    l.mon_grouping = 
+    l.positive_sign = 
+    l.negative_sign= "";
+
+    l.int_frac_digits =
+    l.frac_digits =
+    l.p_cs_precedes =
+    l.p_sep_by_space =
+    l.n_cs_precedes =
+    l.n_sep_by_space =
+    l.p_sign_posn =
+    l.n_sign_posn =
+    l.int_p_cs_precedes =
+    l.int_p_sep_by_space =
+    l.int_n_cs_precedes =
+    l.int_n_sep_by_space =
+    l.int_p_sign_posn =
+    l.int_n_sign_posn = 127; 
+
     return &l;
 }
 

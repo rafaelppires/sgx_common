@@ -521,6 +521,20 @@ std::string b64_encode( const std::string &data ) {
 #if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
     StringSource ssrc( data, true /*pump all*/,
                        new Base64Encoder( new StringSink(ret) ) );
+#elif defined( SGX_OPENSSL )
+    BIO *bio, *b64;
+    BUF_MEM *bufferPtr;
+
+    b64 = BIO_new(BIO_f_base64());
+    bio = BIO_new(BIO_s_mem());
+    bio = BIO_push(b64, bio);
+
+    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); //everything in one line
+    BIO_write(bio, data.c_str(), data.size());
+    BIO_flush(bio);
+    BIO_get_mem_ptr(bio, &bufferPtr);
+    ret = bufferPtr->data;    
+    BIO_free_all(bio);
 #endif
     return ret;
 }
