@@ -108,6 +108,7 @@ int fputc(int c, FILE *stream) {
 #include <stdarg.h>
 #define stdfile_str(a) (a == stdout ? "stdout" : "\033[31mstderr\033[0m")
 #define outerr_str(a,b) (printf("%s: %s", stdfile_str(a), (const char*)b))
+//------------------------------------------------------------------------------
 int fprintf(FILE *stream, const char *format, ...) {
     char buf[1024] = {'\0'};
     va_list ap;
@@ -116,6 +117,29 @@ int fprintf(FILE *stream, const char *format, ...) {
     va_end(ap);
     return fwrite(buf,1,strlen(buf),stream);
 }
+
+//------------------------------------------------------------------------------
+int __fprintf_chk(FILE *stream, int flag, const char *format, ...) {
+    (void)flag;
+    int ret;
+    va_list ap;
+    va_start(ap, format);
+    ret = fprintf(stream,format,ap);
+    va_end(ap);
+    return ret;
+}
+
+//------------------------------------------------------------------------------
+int __printf_chk(int flag, const char *format, ...) {
+    (void)flag;
+    int ret;
+    va_list ap;
+    va_start(ap, format);
+    ret = printf(format,ap);
+    va_end(ap);
+    return ret;
+}
+
 
 //------------------------------------------------------------------------------
 int vfprintf (FILE *f, const char *format, va_list v) {
@@ -234,11 +258,14 @@ struct tm *localtime (const time_t *timep) {
 #endif
 }
 
+#ifdef DUMMY_TIME
 time_t time (time_t *__timer) {
 #ifdef TRACE_LIBC_CALLS
     printf("time_t time (time_t *__timer)\n");
 #endif
+    return 0;
 }
+#endif
 
 clock_t clock (void) {
 #ifdef TRACE_LIBC_CALLS

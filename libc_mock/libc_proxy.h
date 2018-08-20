@@ -102,17 +102,16 @@ void exit (int);
 char *strcpy (char *__restrict, const char *__restrict);
 
 /* TIME */
-#include <time.h>
+#include <time.h> // from sdk
+#include <sys/time.h> // our mock
 #define CLOCKS_PER_SEC 1000000L
 typedef long time_t;
 typedef long clock_t;
-typedef long suseconds_t;
 time_t mktime (struct tm *);
 struct tm *gmtime (const time_t *);
 struct tm *localtime (const time_t *);
 time_t time (time_t *__timer);
 clock_t clock (void);
-struct timeval { time_t tv_sec; suseconds_t tv_usec; };
 
 /* LOCALE */
 #define LC_CTYPE    0

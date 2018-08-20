@@ -104,6 +104,64 @@ int unseal( const uint8_t *src, void **unsealed,
     return decryp_len;
 }
 #endif
+
+//------------------------------------------------------------------------------
+void encrypt_aes_gcm(const uint8_t *plain, int in_len,
+                           uint8_t *ciphertext,
+                           uint8_t *tag,
+                     const uint8_t *key,
+                     const uint8_t *iv ) {
+#ifdef SGX_OPENSSL
+    int howmany, dec_success, len;//, aad_len = 0;
+    //const uint8_t *AAD = NULL;
+    const EVP_CIPHER *cipher = EVP_aes_256_gcm();
+    // Encrypt
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+    EVP_EncryptInit (ctx, cipher, key, iv);
+    //EVP_EncryptUpdate (ctx, NULL, &howmany, AAD, aad_len);
+    len = 0;
+    while(len <= in_len-128) {
+        EVP_EncryptUpdate (ctx, ciphertext+len, &howmany, plain+len, 128);
+        len+=128;
+    }
+    EVP_EncryptUpdate (ctx, ciphertext+len, &howmany, plain+len, in_len - len);
+    EVP_EncryptFinal (ctx, tag, &howmany);
+    EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_GCM_GET_TAG, 16, tag);
+    EVP_CIPHER_CTX_free(ctx);
+#endif
+}
+
+//------------------------------------------------------------------------------
+int decrypt_aes_gcm(const uint8_t *ciphertext, int in_len,
+                          uint8_t *decrypted,
+                          uint8_t *reftag,
+                    const uint8_t *key,
+                    const uint8_t *iv) {
+#ifdef SGX_OPENSSL
+    int howmany, dec_success, len;//, aad_len = 0;
+    //const uint8_t *AAD = NULL;
+    const EVP_CIPHER *cipher = EVP_aes_256_gcm();
+    // Decrypt
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+    EVP_DecryptInit (ctx, cipher, key, iv);
+    EVP_CIPHER_CTX_ctrl (ctx, EVP_CTRL_GCM_SET_TAG, 16, reftag);
+    EVP_DecryptInit (ctx, NULL, key, iv);
+    //EVP_DecryptUpdate (ctx, NULL, &howmany, AAD, aad_len);
+    len = 0;
+    while(len <= in_len-128) {
+        EVP_DecryptUpdate(ctx, decrypted+len, &howmany, ciphertext+len, 128);
+        len+=128;
+    }
+    EVP_DecryptUpdate (ctx, decrypted+len, &howmany, ciphertext+len, in_len-len);
+    uint8_t dec_TAG[16];
+    dec_success = EVP_DecryptFinal (ctx, dec_TAG, &howmany);
+    EVP_CIPHER_CTX_free(ctx);
+    return dec_success;
+#else
+    return 0; // tag does not match
+#endif
+}
+
 //------------------------------------------------------------------------------
 int encrypt_aes( char type, const uint8_t *plain, uint8_t *cipher, size_t plen,
                  const uint8_t *key, uint8_t *iv ) {
@@ -471,6 +529,38 @@ std::string decrypt_aes( const std::string &k, const std::string &cipher ) {
 }
 
 //------------------------------------------------------------------------------
+std::string encrypt_aesgcm( const std::string &plain, const std::string &key ) {
+    std::string tag, iv, cipher;
+    unsigned char *cipher_buff = (unsigned char*) malloc( plain.size() ),
+                  *tag_buff    = (unsigned char*) malloc( 16 ),
+                  *iv_buff     = (unsigned char*) malloc( 16 );
+    sgx_read_rand( iv_buff, 16 );
+    encrypt_aes_gcm( (const uint8_t*)plain.c_str(), plain.size(), cipher_buff, 
+                     tag_buff, (const uint8_t*)key.c_str(), iv_buff );
+    tag =    std::string( (char*)tag_buff, 16 );
+    iv =     std::string( (char*)iv_buff, 16 );
+    cipher = std::string( (char*)cipher_buff, plain.size() );
+    return tag + iv + cipher;
+}
+
+//------------------------------------------------------------------------------
+std::pair<bool,std::string> decrypt_aesgcm( const std::string &cipher,
+                                            const std::string &key ) {
+    if( cipher.size() < 33 ) return std::make_pair(false,"");
+    int dec_size = cipher.size() - 32;
+    unsigned char *dec_buff = (unsigned char*) malloc(dec_size);
+    std::string plain, iv  = cipher.substr(16,16);
+    unsigned char tag[16];
+    memcpy( tag, cipher.substr(0,16).c_str(), 16 );
+    int ret = decrypt_aes_gcm( (const uint8_t*)cipher.substr(32).c_str(), 
+                          dec_size, dec_buff, tag, (const uint8_t*)key.c_str(), 
+                          (const uint8_t*)iv.c_str() );
+    plain = std::string( (char*)dec_buff, dec_size );
+    free( dec_buff );
+    return std::make_pair(ret == 1, plain);
+}
+
+//------------------------------------------------------------------------------
 std::string encrypt_rsa( const PubKey &pubkey, const std::string &plain ) {
     std::string cipher;
 #if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
@@ -481,6 +571,7 @@ std::string encrypt_rsa( const PubKey &pubkey, const std::string &plain ) {
 #endif
     return cipher;
 }
+
 
 //------------------------------------------------------------------------------
 std::string decrypt_rsa( const PrvKey &prvkey, const std::string &cipher ) {
