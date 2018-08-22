@@ -1,6 +1,9 @@
 #ifndef _MOCK_TIME_H_
 #define _MOCK_TIME_H_
 
+#include <stdlib.h>
+#include <time.h>
+
 typedef long int __suseconds_t;
 typedef __suseconds_t suseconds_t;
 
