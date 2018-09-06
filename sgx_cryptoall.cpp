@@ -169,22 +169,21 @@ int encrypt_aes( char type, const uint8_t *plain, uint8_t *cipher, size_t plen,
 #ifdef SGX_OPENSSL          //     openssl {
     int len;
     int cipher_len;
-    EVP_CIPHER_CTX *ctx;
-    ctx = EVP_CIPHER_CTX_new();
-    if( type == AES128 )
-        EVP_EncryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, key, iv);
-    else if( type == AES256 )
-        EVP_EncryptInit_ex(ctx, EVP_aes_256_ctr(), NULL, key, iv);
-    else {
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+    const EVP_CIPHER *ciph = type == AES128 ? EVP_aes_128_ctr() :
+                                              EVP_aes_256_ctr();
+    if( type != AES128 && type != AES256 ) {
         ret = -1;
         goto getout;
     }
-    EVP_EncryptUpdate(ctx, cipher, &len, plain, plen);
+    ret |= !EVP_EncryptInit_ex(ctx, ciph, NULL, key, iv);
+    ret |= !EVP_EncryptUpdate(ctx, cipher, &len, plain, plen);
     cipher_len = len;
-    EVP_EncryptFinal_ex(ctx, cipher + len, &len);
+    ret |= !EVP_EncryptFinal_ex(ctx, cipher + len, &len);
     cipher_len += len;
 getout:
     EVP_CIPHER_CTX_free(ctx);
+    if( ret != -1 ) ret = ret ? -2 : cipher_len;
 #elif defined( ENCLAVED ) //     } openssl else intel sdk { 
     uint8_t i[16];
     memcpy(i,iv,16); // intel's aes updates iv assuming `src` is a stream chunk
@@ -609,6 +608,7 @@ std::string sha256( const std::string &data ) {
 //------------------------------------------------------------------------------
 std::string b64_encode( const std::string &data ) {
     std::string ret;
+    if( data.empty() ) return ret;
 #if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
     StringSource ssrc( data, true /*pump all*/,
                        new Base64Encoder( new StringSink(ret) ) );
