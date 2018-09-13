@@ -533,7 +533,13 @@ std::string encrypt_aesgcm( const std::string &plain, const std::string &key ) {
     unsigned char *cipher_buff = (unsigned char*) malloc( plain.size() ),
                   *tag_buff    = (unsigned char*) malloc( 16 ),
                   *iv_buff     = (unsigned char*) malloc( 16 );
+#ifdef ENCLAVED
     sgx_read_rand( iv_buff, 16 );
+#else
+    // Creates a rand IV
+    for( uint8_t i = 0; i < 16; i += sizeof(int) )
+        *(int*)&iv_buff[i] = rand();
+#endif
     encrypt_aes_gcm( (const uint8_t*)plain.c_str(), plain.size(), cipher_buff, 
                      tag_buff, (const uint8_t*)key.c_str(), iv_buff );
     tag =    std::string( (char*)tag_buff, 16 );
