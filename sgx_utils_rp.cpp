@@ -22,6 +22,7 @@ void exit_error( int exit_code, const char *fmt, ... ) {
     va_start(ap, fmt);
     vfprintf( stderr, fmt, ap );
     va_end( ap );
+    fflush(stderr);
     exit( exit_code );
 }
 

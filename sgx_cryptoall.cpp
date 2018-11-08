@@ -630,7 +630,7 @@ std::string b64_encode( const std::string &data ) {
     BIO_write(bio, data.c_str(), data.size());
     BIO_flush(bio);
     BIO_get_mem_ptr(bio, &bufferPtr);
-    ret = bufferPtr->data;    
+    ret = std::string(bufferPtr->data,bufferPtr->length);    
     BIO_free_all(bio);
 #endif
     return ret;
