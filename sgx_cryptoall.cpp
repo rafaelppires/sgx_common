@@ -545,7 +545,7 @@ std::string encrypt_aesgcm( const std::string &plain, const std::string &key ) {
     tag =    std::string( (char*)tag_buff, 16 );
     iv =     std::string( (char*)iv_buff, 16 );
     cipher = std::string( (char*)cipher_buff, plain.size() );
-    return tag + iv + cipher;
+    return iv + cipher + tag;
 }
 
 //------------------------------------------------------------------------------

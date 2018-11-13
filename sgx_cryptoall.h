@@ -20,6 +20,7 @@ typedef CryptoPP::RSA::PrivateKey PrvKey;
 #endif
 
 std::string encrypt_aes( const std::string &key, const std::string &plain );
+std::string encrypt_aesgcm( const std::string &plain, const std::string &key );
 void encrypt_aes_inline( const std::string &key, std::string &plain );
 void decrypt_aes_inline( const std::string &key, std::string & );
 std::string decrypt_aes( const std::string &key, const std::string &cipher );
