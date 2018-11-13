@@ -528,7 +528,7 @@ std::string decrypt_aes( const std::string &k, const std::string &cipher ) {
 }
 
 //------------------------------------------------------------------------------
-std::string encrypt_aesgcm( const std::string &plain, const std::string &key ) {
+std::string encrypt_aesgcm( const std::string &key, const std::string &plain ) {
     std::string tag, iv, cipher;
     unsigned char *cipher_buff = (unsigned char*) malloc( plain.size() ),
                   *tag_buff    = (unsigned char*) malloc( 16 ),
@@ -549,19 +549,20 @@ std::string encrypt_aesgcm( const std::string &plain, const std::string &key ) {
 }
 
 //------------------------------------------------------------------------------
-std::pair<bool,std::string> decrypt_aesgcm( const std::string &cipher,
-                                            const std::string &key ) {
-    if( cipher.size() < 33 ) return std::make_pair(false,"");
+std::pair<bool, std::string> decrypt_aesgcm(const std::string &key,
+                                            const std::string &cipher) {
+    if (cipher.size() < 33) return std::make_pair(false, "");
     int dec_size = cipher.size() - 32;
-    unsigned char *dec_buff = (unsigned char*) malloc(dec_size);
-    std::string plain, iv  = cipher.substr(16,16);
+    unsigned char *dec_buff = (unsigned char *)malloc(dec_size);
+    std::string plain, iv = cipher.substr(0, 16);
     unsigned char tag[16];
-    memcpy( tag, cipher.substr(0,16).c_str(), 16 );
-    int ret = decrypt_aes_gcm( (const uint8_t*)cipher.substr(32).c_str(), 
-                          dec_size, dec_buff, tag, (const uint8_t*)key.c_str(), 
-                          (const uint8_t*)iv.c_str() );
-    plain = std::string( (char*)dec_buff, dec_size );
-    free( dec_buff );
+    memcpy(tag, cipher.substr(16 + dec_size, 16).c_str(), 16);
+    int ret =
+        decrypt_aes_gcm((const uint8_t *)cipher.substr(16, dec_size).c_str(),
+                        dec_size, dec_buff, tag, (const uint8_t *)key.c_str(),
+                        (const uint8_t *)iv.c_str());
+    plain = std::string((char *)dec_buff, dec_size);
+    free(dec_buff);
     return std::make_pair(ret == 1, plain);
 }
 
