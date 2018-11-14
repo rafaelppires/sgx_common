@@ -543,20 +543,22 @@ std::string decrypt_aes(const std::string &k, const std::string &cipher) {
 
 //------------------------------------------------------------------------------
 std::string encrypt_aesgcm(const std::string &key, const std::string &plain) {
+    unsigned iv_size = 12, tag_size = 16, meta_size = iv_size + tag_size;
     std::string tag, iv, cipher;
     unsigned char *cipher_buff = (unsigned char *)malloc(plain.size()),
-                  *tag_buff = (unsigned char *)malloc(16),
-                  *iv_buff = (unsigned char *)malloc(16);
+                  *tag_buff = (unsigned char *)malloc(tag_size),
+                  *iv_buff = (unsigned char *)malloc(iv_size);
 #ifdef ENCLAVED
-    sgx_read_rand(iv_buff, 16);
+    sgx_read_rand(iv_buff, iv_size);
 #else
     // Creates a rand IV
-    for (uint8_t i = 0; i < 16; i += sizeof(int)) *(int *)&iv_buff[i] = rand();
+    for (uint8_t i = 0; i < iv_size; i += sizeof(int))
+        *(int *)&iv_buff[i] = rand();
 #endif
     encrypt_aes_gcm((const uint8_t *)plain.c_str(), plain.size(), cipher_buff,
                     tag_buff, (const uint8_t *)key.c_str(), iv_buff);
-    tag = std::string((char *)tag_buff, 16);
-    iv = std::string((char *)iv_buff, 16);
+    tag = std::string((char *)tag_buff, tag_size);
+    iv = std::string((char *)iv_buff, iv_size);
     cipher = std::string((char *)cipher_buff, plain.size());
     return iv + cipher + tag;
 }
@@ -564,16 +566,17 @@ std::string encrypt_aesgcm(const std::string &key, const std::string &plain) {
 //------------------------------------------------------------------------------
 std::pair<bool, std::string> decrypt_aesgcm(const std::string &key,
                                             const std::string &cipher) {
-    if (cipher.size() < 33) return std::make_pair(false, "");
-    int dec_size = cipher.size() - 32;
+    unsigned iv_size = 12, tag_size = 16, meta_size = iv_size + tag_size;
+    if (cipher.size() < 1 + meta_size) return std::make_pair(false, "");
+    int dec_size = cipher.size() - meta_size;
     unsigned char *dec_buff = (unsigned char *)malloc(dec_size);
-    std::string plain, iv = cipher.substr(0, 16);
-    unsigned char tag[16];
-    memcpy(tag, cipher.substr(16 + dec_size, 16).c_str(), 16);
-    int ret =
-        decrypt_aes_gcm((const uint8_t *)cipher.substr(16, dec_size).c_str(),
-                        dec_size, dec_buff, tag, (const uint8_t *)key.c_str(),
-                        (const uint8_t *)iv.c_str());
+    std::string plain, iv = cipher.substr(0, iv_size);
+    unsigned char tag[tag_size];
+    memcpy(tag, cipher.substr(iv_size + dec_size, tag_size).c_str(), tag_size);
+    int ret = decrypt_aes_gcm(
+        (const uint8_t *)cipher.substr(iv_size, dec_size).c_str(), dec_size,
+        dec_buff, tag, (const uint8_t *)key.c_str(),
+        (const uint8_t *)iv.c_str());
     plain = std::string((char *)dec_buff, dec_size);
     free(dec_buff);
     return std::make_pair(ret == 1, plain);
