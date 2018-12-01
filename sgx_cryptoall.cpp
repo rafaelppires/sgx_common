@@ -479,7 +479,12 @@ std::string encrypt_aes(const std::string &k, const std::string &plain) {
     }
 #else
     // Creates a rand IV
+#ifdef ENCLAVED
     sgx_read_rand(iv, sizeof(iv));
+#else
+    for (uint8_t i = 0; i < sizeof(iv); i += sizeof(int))
+        *(int *)&iv[i] = rand();
+#endif
 
     uint8_t *buff = new uint8_t[plain.size()];
     int ret = ::encrypt_aes(k.size() > 16 ? AES256 : AES128,
