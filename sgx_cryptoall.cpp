@@ -478,7 +478,7 @@ std::string encrypt_aes(const std::string &k, const std::string &plain) {
         exit(1);
     }
 #else
-    // Creates a rand IV
+// Creates a rand IV
 #ifdef ENCLAVED
     sgx_read_rand(iv, sizeof(iv));
 #else
@@ -550,9 +550,8 @@ std::string decrypt_aes(const std::string &k, const std::string &cipher) {
 std::string encrypt_aesgcm(const std::string &key, const std::string &plain) {
     unsigned iv_size = 12, tag_size = 16, meta_size = iv_size + tag_size;
     std::string tag, iv, cipher;
-    unsigned char *cipher_buff = (unsigned char *)malloc(plain.size()),
-                  *tag_buff = (unsigned char *)malloc(tag_size),
-                  *iv_buff = (unsigned char *)malloc(iv_size);
+    unsigned char cipher_buff[plain.size()], tag_buff[tag_size],
+        iv_buff[iv_size];
 #ifdef ENCLAVED
     sgx_read_rand(iv_buff, iv_size);
 #else
