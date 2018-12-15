@@ -32,8 +32,10 @@ std::string printable(const std::string &s);
 void decodeBase64PublicKey(const std::string &filename, PubKey &key);
 void decodeBase64PrivateKey(const std::string &filename, PrvKey &key);
 std::string sha256(const std::string &);
+std::string sha224(const std::string &);
 std::string b64_encode(const std::string &);
 std::string b64_decode(const std::string &);
+std::string get_rand(size_t);
 
 #ifdef ENCLAVED
 std::string sealEnclave(const std::string &src);

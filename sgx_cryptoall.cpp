@@ -410,6 +410,18 @@ void generateKeysAndSave() {
 }
 
 //------------------------------------------------------------------------------
+std::string get_rand(size_t len) {
+    unsigned char r[len];
+#ifdef ENCLAVED
+    sgx_read_rand(r, len);
+#else
+    for (size_t i = 0; i < len; i += sizeof(int))
+        *(int *)&r[i] = rand();
+#endif
+    return std::string((char*)r,len);
+}
+
+//------------------------------------------------------------------------------
 std::string printable(const std::string &s) {
     std::string ret, orep = " [+", crep = "] ";
     bool h = false;
@@ -453,20 +465,16 @@ std::string printable(const std::string &s) {
 //------------------------------------------------------------------------------
 std::string encrypt_aes(const std::string &k, const std::string &plain) {
     std::string cipher;
-    unsigned char key[32], iv[16];
+    unsigned char key[32];
     memset(key, 0, sizeof(key));
-    memset(iv, 0, sizeof(iv));
-
     memcpy(key, k.c_str(), std::min(sizeof(key), k.size()));
 
-#if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
     // Creates a rand IV
-    for (uint8_t i = 0; i < sizeof(iv); i += sizeof(int))
-        *(int *)&iv[i] = rand();
-
+    std::string iv = get_rand(16);
+#if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
     try {
         CTR_Mode<AES>::Encryption e;
-        e.SetKeyWithIV(key, k.size() > 16 ? 32 : 16, iv);
+        e.SetKeyWithIV(key, k.size() > 16 ? 32 : 16, iv.data());
 
         // The StreamTransformationFilter adds padding
         //  as required. ECB and CBC Mode must be padded
@@ -478,24 +486,16 @@ std::string encrypt_aes(const std::string &k, const std::string &plain) {
         exit(1);
     }
 #else
-// Creates a rand IV
-#ifdef ENCLAVED
-    sgx_read_rand(iv, sizeof(iv));
-#else
-    for (uint8_t i = 0; i < sizeof(iv); i += sizeof(int))
-        *(int *)&iv[i] = rand();
-#endif
-
     uint8_t *buff = new uint8_t[plain.size()];
     int ret = ::encrypt_aes(k.size() > 16 ? AES256 : AES128,
                             (const uint8_t *)plain.c_str(), buff, plain.size(),
-                            key, iv);
+                            key, (uint8_t*)iv.data());
     if (ret == plain.size()) cipher = std::string((char *)buff, ret);
     delete[] buff;
 #endif
 
     // First 16 bytes corresponds to the generated IV
-    return std::string((const char *)iv, sizeof(iv)) + cipher;
+    return iv + cipher;
 }
 
 //------------------------------------------------------------------------------
@@ -550,19 +550,13 @@ std::string decrypt_aes(const std::string &k, const std::string &cipher) {
 std::string encrypt_aesgcm(const std::string &key, const std::string &plain) {
     unsigned iv_size = 12, tag_size = 16, meta_size = iv_size + tag_size;
     std::string tag, iv, cipher;
-    unsigned char cipher_buff[plain.size()], tag_buff[tag_size],
-        iv_buff[iv_size];
-#ifdef ENCLAVED
-    sgx_read_rand(iv_buff, iv_size);
-#else
+    unsigned char cipher_buff[plain.size()], tag_buff[tag_size];
+
     // Creates a rand IV
-    for (uint8_t i = 0; i < iv_size; i += sizeof(int))
-        *(int *)&iv_buff[i] = rand();
-#endif
+    iv = get_rand(iv_size);
     encrypt_aes_gcm((const uint8_t *)plain.c_str(), plain.size(), cipher_buff,
-                    tag_buff, (const uint8_t *)key.c_str(), iv_buff);
+                    tag_buff, (const uint8_t *)key.c_str(),(uint8_t*)iv.data());
     tag = std::string((char *)tag_buff, tag_size);
-    iv = std::string((char *)iv_buff, iv_size);
     cipher = std::string((char *)cipher_buff, plain.size());
     return iv + cipher + tag;
 }
@@ -626,6 +620,21 @@ std::string sha256(const std::string &data) {
     SHA256((const uint8_t *)data.c_str(), data.size(), hash);
 #endif
     digest = std::string((char *)hash, 32);
+#endif
+    return digest;
+}
+
+//------------------------------------------------------------------------------
+std::string sha224(const std::string &data) {
+    std::string digest;
+#if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
+    CryptoPP::SHA224 hash;
+    StringSource foo(data, true, new CryptoPP::HashFilter(
+                                     hash, new CryptoPP::StringSink(digest)));
+#else
+    uint8_t hash[28];
+    SHA224((const uint8_t *)data.data(), data.size(), hash);
+    digest = std::string((char *)hash, 28);
 #endif
     return digest;
 }
