@@ -474,7 +474,7 @@ std::string encrypt_aes(const std::string &k, const std::string &plain) {
 #if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
     try {
         CTR_Mode<AES>::Encryption e;
-        e.SetKeyWithIV(key, k.size() > 16 ? 32 : 16, iv.data());
+        e.SetKeyWithIV(key, k.size() > 16 ? 32 : 16, (const byte*)iv.data());
 
         // The StreamTransformationFilter adds padding
         //  as required. ECB and CBC Mode must be padded
