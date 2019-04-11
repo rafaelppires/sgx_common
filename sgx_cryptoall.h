@@ -49,6 +49,7 @@ class StateSha256 {
 
 bool sha256_init(StateSha256 &s);
 bool sha256_append(StateSha256 &s, const std::string &);
+std::string sha256_get(StateSha256 &s);
 
 std::string sha256(StateSha256 &s);
 std::string sealEnclave(const std::string &src);
