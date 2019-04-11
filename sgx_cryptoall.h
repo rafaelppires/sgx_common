@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include <string>
 
+#ifdef ENCLAVED
+#include <sgx_tseal.h>
+#endif
+
 #if defined(__cplusplus) && !defined(ENCLAVED)  // cxx && !sgx {
 #include <crypto++/rsa.h>
 #endif  // } cxx && !sgx
@@ -38,6 +42,15 @@ std::string b64_decode(const std::string &);
 std::string get_rand(size_t);
 
 #ifdef ENCLAVED
+class StateSha256 {
+   public:
+    sgx_sha_state_handle_t state;
+};
+
+bool sha256_init(StateSha256 &s);
+bool sha256_append(StateSha256 &s, const std::string &);
+
+std::string sha256(StateSha256 &s);
 std::string sealEnclave(const std::string &src);
 std::string sealSigner(const std::string &src);
 std::string unseal(const std::string &src);

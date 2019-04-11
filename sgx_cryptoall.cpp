@@ -4,7 +4,6 @@
 #include <libc_mock/libcpp_mock.h>
 #include <sgx_tcrypto.h>
 #include <sgx_trts.h>
-#include <sgx_tseal.h>
 #endif
 
 #ifdef SGX_OPENSSL  // openssl {
@@ -415,10 +414,9 @@ std::string get_rand(size_t len) {
 #ifdef ENCLAVED
     sgx_read_rand(r, len);
 #else
-    for (size_t i = 0; i < len; i += sizeof(int))
-        *(int *)&r[i] = rand();
+    for (size_t i = 0; i < len; i += sizeof(int)) *(int *)&r[i] = rand();
 #endif
-    return std::string((char*)r,len);
+    return std::string((char *)r, len);
 }
 
 //------------------------------------------------------------------------------
@@ -474,7 +472,7 @@ std::string encrypt_aes(const std::string &k, const std::string &plain) {
 #if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
     try {
         CTR_Mode<AES>::Encryption e;
-        e.SetKeyWithIV(key, k.size() > 16 ? 32 : 16, (const byte*)iv.data());
+        e.SetKeyWithIV(key, k.size() > 16 ? 32 : 16, (const byte *)iv.data());
 
         // The StreamTransformationFilter adds padding
         //  as required. ECB and CBC Mode must be padded
@@ -489,7 +487,7 @@ std::string encrypt_aes(const std::string &k, const std::string &plain) {
     uint8_t *buff = new uint8_t[plain.size()];
     int ret = ::encrypt_aes(k.size() > 16 ? AES256 : AES128,
                             (const uint8_t *)plain.c_str(), buff, plain.size(),
-                            key, (uint8_t*)iv.data());
+                            key, (uint8_t *)iv.data());
     if (ret == plain.size()) cipher = std::string((char *)buff, ret);
     delete[] buff;
 #endif
@@ -555,7 +553,8 @@ std::string encrypt_aesgcm(const std::string &key, const std::string &plain) {
     // Creates a rand IV
     iv = get_rand(iv_size);
     encrypt_aes_gcm((const uint8_t *)plain.c_str(), plain.size(), cipher_buff,
-                    tag_buff, (const uint8_t *)key.c_str(),(uint8_t*)iv.data());
+                    tag_buff, (const uint8_t *)key.c_str(),
+                    (uint8_t *)iv.data());
     tag = std::string((char *)tag_buff, tag_size);
     cipher = std::string((char *)cipher_buff, plain.size());
     return iv + cipher + tag;
@@ -624,6 +623,29 @@ std::string sha256(const std::string &data) {
     return digest;
 }
 
+#ifdef ENCLAVED
+//------------------------------------------------------------------------------
+bool sha256_init(StateSha256 &state) {
+    sgx_status_t ret = sgx_sha256_init(&state.state);
+    return ret == SGX_SUCCESS;
+}
+
+//------------------------------------------------------------------------------
+bool sha256_append(StateSha256 &state, const std::string &chunk) {
+    sgx_status_t ret =
+        sgx_sha256_update((const uint8_t*)chunk.data(), chunk.size(), state.state);
+    return ret == SGX_SUCCESS;
+}
+
+//------------------------------------------------------------------------------
+std::string sha256_get(StateSha256 &state) {
+    uint8_t hash[32];
+    sgx_status_t ret = sgx_sha256_get_hash(state.state, &hash);
+    if (ret == SGX_SUCCESS) return std::string((char *)hash, 32);
+    return "";
+}
+#endif
+
 //------------------------------------------------------------------------------
 std::string sha224(const std::string &data) {
     std::string digest;
@@ -631,7 +653,7 @@ std::string sha224(const std::string &data) {
     CryptoPP::SHA224 hash;
     StringSource foo(data, true, new CryptoPP::HashFilter(
                                      hash, new CryptoPP::StringSink(digest)));
-#else
+#elif defined(SGX_OPENSSL)
     uint8_t hash[28];
     SHA224((const uint8_t *)data.data(), data.size(), hash);
     digest = std::string((char *)hash, 28);
