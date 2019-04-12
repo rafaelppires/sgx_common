@@ -128,6 +128,9 @@ void encrypt_aes_gcm(const uint8_t *plain, int in_len, uint8_t *ciphertext,
     EVP_EncryptFinal(ctx, tag, &howmany);
     EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, 16, tag);
     EVP_CIPHER_CTX_free(ctx);
+#elif ENCLAVED
+    sgx_rijndael128GCM_encrypt((const sgx_aes_gcm_128bit_key_t *) key, plain, in_len, ciphertext, iv, 12,
+                               nullptr, 0, (sgx_aes_gcm_128bit_tag_t *) tag);
 #endif
 }
 
@@ -156,8 +159,11 @@ int decrypt_aes_gcm(const uint8_t *ciphertext, int in_len, uint8_t *decrypted,
     dec_success = EVP_DecryptFinal(ctx, dec_TAG, &howmany);
     EVP_CIPHER_CTX_free(ctx);
     return dec_success;
-#else
-    return 0;  // tag does not match
+#elif ENCLAVED
+    sgx_status_t status = sgx_rijndael128GCM_decrypt(
+            (const sgx_aes_gcm_128bit_key_t *) key, ciphertext, in_len, decrypted, iv, 12,
+            nullptr, 0, (const sgx_aes_gcm_128bit_tag_t *) reftag);
+    return status == SGX_SUCCESS ? 1 : 0;
 #endif
 }
 
