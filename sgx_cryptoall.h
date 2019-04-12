@@ -44,12 +44,19 @@ std::string get_rand(size_t);
 #ifdef ENCLAVED
 class StateSha256 {
    public:
-    sgx_sha_state_handle_t state;
+    sgx_sha_state_handle_t context;
 };
 
 bool sha256_init(StateSha256 &s);
 bool sha256_append(StateSha256 &s, const std::string &);
 std::string sha256_get(StateSha256 &s);
+
+#ifdef SGX_OPENSSL
+class StateHmacSha256;
+bool hmac_sha256_init(StateSha256 &ctx, const std::string &key);
+bool hmac_sha256_append(StateSha256 &ctx, const std::string &data);
+std::string hmac_sha256_get(StateSha256 &ctx);
+#endif
 
 std::string sha256(StateSha256 &s);
 std::string sealEnclave(const std::string &src);

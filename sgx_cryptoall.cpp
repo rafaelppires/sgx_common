@@ -626,24 +626,52 @@ std::string sha256(const std::string &data) {
 #ifdef ENCLAVED
 //------------------------------------------------------------------------------
 bool sha256_init(StateSha256 &state) {
-    sgx_status_t ret = sgx_sha256_init(&state.state);
+    sgx_status_t ret = sgx_sha256_init(&state.context);
     return ret == SGX_SUCCESS;
 }
 
 //------------------------------------------------------------------------------
 bool sha256_append(StateSha256 &state, const std::string &chunk) {
-    sgx_status_t ret =
-        sgx_sha256_update((const uint8_t*)chunk.data(), chunk.size(), state.state);
+    sgx_status_t ret = sgx_sha256_update((const uint8_t *)chunk.data(),
+                                         chunk.size(), state.context);
     return ret == SGX_SUCCESS;
 }
 
 //------------------------------------------------------------------------------
 std::string sha256_get(StateSha256 &state) {
     uint8_t hash[32];
-    sgx_status_t ret = sgx_sha256_get_hash(state.state, &hash);
+    sgx_status_t ret = sgx_sha256_get_hash(state.context, &hash);
     if (ret == SGX_SUCCESS) return std::string((char *)hash, 32);
     return "";
 }
+
+#ifdef SGX_OPENSSL
+#include <openssl/hmac.h>
+class StateHmacSha256 {
+    public:
+    HMAC_CTX context;
+};
+//------------------------------------------------------------------------------
+bool hmac_sha256_init(StateHmacSha256 &state, const std::string &key) {
+    HMAC_CTX_init(&state.context);
+    HMAC_Init_ex(&state.context, key.data(), key.size(), EVP_sha256(), NULL);
+}
+
+//------------------------------------------------------------------------------
+bool hmac_sha256_append(StateHmacSha256 &state, const std::string &data) {
+    HMAC_Update(&state.context, (unsigned char *)data.data(), data.size());
+}
+
+//------------------------------------------------------------------------------
+std::string hmac_sha256_get(StateHmacSha256 &state) {
+    unsigned char result[32];
+    unsigned int len = sizeof(result);
+    HMAC_Final(&state.context, result, &len);
+    HMAC_CTX_cleanup(&state.context);
+    return std::string((char*)result, len);
+}
+#endif
+
 #endif
 
 //------------------------------------------------------------------------------
