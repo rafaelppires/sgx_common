@@ -23,20 +23,21 @@
 #include <crypto++/osrng.h>
 #include <crypto++/queue.h>
 #include <cryptopp/files.h>
+
 #include <fstream>
 #include <iostream>
-using CryptoPP::Exception;
-using CryptoPP::BufferedTransformation;
-using CryptoPP::StringSink;
-using CryptoPP::StringSource;
-using CryptoPP::StreamTransformationFilter;
-using CryptoPP::FileSink;
-using CryptoPP::FileSource;
 using CryptoPP::AES;
-using CryptoPP::CTR_Mode;
 using CryptoPP::Base64Decoder;
 using CryptoPP::Base64Encoder;
+using CryptoPP::BufferedTransformation;
 using CryptoPP::ByteQueue;
+using CryptoPP::CTR_Mode;
+using CryptoPP::Exception;
+using CryptoPP::FileSink;
+using CryptoPP::FileSource;
+using CryptoPP::StreamTransformationFilter;
+using CryptoPP::StringSink;
+using CryptoPP::StringSource;
 #endif  // } crypto++
 
 //------------------------------------------------------------------------------
@@ -129,8 +130,9 @@ void encrypt_aes_gcm(const uint8_t *plain, int in_len, uint8_t *ciphertext,
     EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, 16, tag);
     EVP_CIPHER_CTX_free(ctx);
 #elif ENCLAVED
-    sgx_rijndael128GCM_encrypt((const sgx_aes_gcm_128bit_key_t *) key, plain, in_len, ciphertext, iv, 12,
-                               nullptr, 0, (sgx_aes_gcm_128bit_tag_t *) tag);
+    sgx_rijndael128GCM_encrypt((const sgx_aes_gcm_128bit_key_t *)key, plain,
+                               in_len, ciphertext, iv, 12, nullptr, 0,
+                               (sgx_aes_gcm_128bit_tag_t *)tag);
 #endif
 }
 
@@ -161,8 +163,8 @@ int decrypt_aes_gcm(const uint8_t *ciphertext, int in_len, uint8_t *decrypted,
     return dec_success;
 #elif ENCLAVED
     sgx_status_t status = sgx_rijndael128GCM_decrypt(
-            (const sgx_aes_gcm_128bit_key_t *) key, ciphertext, in_len, decrypted, iv, 12,
-            nullptr, 0, (const sgx_aes_gcm_128bit_tag_t *) reftag);
+        (const sgx_aes_gcm_128bit_key_t *)key, ciphertext, in_len, decrypted,
+        iv, 12, nullptr, 0, (const sgx_aes_gcm_128bit_tag_t *)reftag);
     return status == SGX_SUCCESS ? 1 : 0;
 #endif
 }
@@ -591,8 +593,9 @@ std::string encrypt_rsa(const PubKey &pubkey, const std::string &plain) {
 #if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
     CryptoPP::AutoSeededRandomPool rng;
     CryptoPP::RSAES_OAEP_SHA_Encryptor e(pubkey);
-    StringSource ss1(plain, true, new CryptoPP::PK_EncryptorFilter(
-                                      rng, e, new StringSink(cipher)));
+    StringSource ss1(
+        plain, true,
+        new CryptoPP::PK_EncryptorFilter(rng, e, new StringSink(cipher)));
 #endif
     return cipher;
 }
@@ -604,8 +607,9 @@ std::string decrypt_rsa(const PrvKey &prvkey, const std::string &cipher) {
     CryptoPP::AutoSeededRandomPool rng;
     CryptoPP::RSAES_OAEP_SHA_Decryptor d(prvkey);
 
-    StringSource ss(cipher, true, new CryptoPP::PK_DecryptorFilter(
-                                      rng, d, new StringSink(recovered)));
+    StringSource ss(
+        cipher, true,
+        new CryptoPP::PK_DecryptorFilter(rng, d, new StringSink(recovered)));
 #endif
     return recovered;
 }
@@ -615,13 +619,14 @@ std::string sha256(const std::string &data) {
     std::string digest;
 #if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
     CryptoPP::SHA256 hash;
-    StringSource foo(data, true, new CryptoPP::HashFilter(
-                                     hash, new CryptoPP::StringSink(digest)));
+    StringSource foo(
+        data, true,
+        new CryptoPP::HashFilter(hash, new CryptoPP::StringSink(digest)));
 #else
     uint8_t hash[32];
 #ifdef ENCLAVED  // intel
     sgx_sha256_msg((const uint8_t *)data.c_str(), data.size(), &hash);
-#else  // openssl
+#else            // openssl
     SHA256((const uint8_t *)data.c_str(), data.size(), hash);
 #endif
     digest = std::string((char *)hash, 32);
@@ -653,28 +658,26 @@ std::string sha256_get(StateSha256 &state) {
 
 #ifdef SGX_OPENSSL
 #include <openssl/hmac.h>
-class StateHmacSha256 {
-    public:
-    HMAC_CTX context;
-};
 //------------------------------------------------------------------------------
-bool hmac_sha256_init(StateHmacSha256 &state, const std::string &key) {
-    HMAC_CTX_init(&state.context);
-    HMAC_Init_ex(&state.context, key.data(), key.size(), EVP_sha256(), NULL);
+bool hmac_sha256_init(HMAC_CTX **state, const std::string &key) {
+    *state = HMAC_CTX_new();
+    return HMAC_Init_ex(*state, key.data(), key.size(), EVP_sha256(), NULL) ==
+           1;
 }
 
 //------------------------------------------------------------------------------
-bool hmac_sha256_append(StateHmacSha256 &state, const std::string &data) {
-    HMAC_Update(&state.context, (unsigned char *)data.data(), data.size());
+bool hmac_sha256_append(HMAC_CTX *state, const std::string &data) {
+    return HMAC_Update(state, (unsigned char *)data.data(), data.size()) == 1;
 }
 
 //------------------------------------------------------------------------------
-std::string hmac_sha256_get(StateHmacSha256 &state) {
+std::string hmac_sha256_get(HMAC_CTX **state) {
     unsigned char result[32];
     unsigned int len = sizeof(result);
-    HMAC_Final(&state.context, result, &len);
-    HMAC_CTX_cleanup(&state.context);
-    return std::string((char*)result, len);
+    HMAC_Final(*state, result, &len);
+    HMAC_CTX_free(*state);
+    *state = 0;
+    return std::string((char *)result, len);
 }
 #endif
 
@@ -685,8 +688,9 @@ std::string sha224(const std::string &data) {
     std::string digest;
 #if !defined(ENCLAVED) && !defined(SGX_OPENSSL)
     CryptoPP::SHA224 hash;
-    StringSource foo(data, true, new CryptoPP::HashFilter(
-                                     hash, new CryptoPP::StringSink(digest)));
+    StringSource foo(
+        data, true,
+        new CryptoPP::HashFilter(hash, new CryptoPP::StringSink(digest)));
 #elif defined(SGX_OPENSSL)
     uint8_t hash[28];
     SHA224((const uint8_t *)data.data(), data.size(), hash);
