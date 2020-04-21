@@ -7,7 +7,7 @@
 static FILE *const nstdrandom = (FILE*)3;
 static FILE *next_fd = nstdrandom + 1;
 extern "C" {
-extern void printf(const char *fmt, ...);
+extern int printf(const char *fmt, ...);
 }
 
 struct FileDescriptor;

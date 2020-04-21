@@ -4,6 +4,9 @@
 #include <sys/types.h>
 
 #include <string>
+extern "C" {
+extern int printf(const char *fmt, ...);
+}
 
 namespace std {
 
@@ -13,50 +16,36 @@ typedef ssize_t streamsize;
 
 struct ios_base {
     streamsize precision(streamsize prec) { return 5; }
-    streamsize width() const { return __width_; }
-    streamsize width(streamsize __wide) {
-        streamsize __r = __width_;
-        __width_ = __wide;
-        return __r;
-    }
+    streamsize width() const;
+    streamsize width(streamsize __wide);
 
    private:
     streamsize __width_;
 };
 
 struct ios : public ios_base {
-    char fill() const {
-        // if (traits_type::eq_int_type(traits_type::eof(), __fill_))
-        //    __fill_ = widen(' ');
-        return __fill_;
-    }
-
-    char fill(char __ch) {
-        char __r = __fill_;
-        __fill_ = __ch;
-        return __r;
-    }
-
-    ios &copyfmt(const ios &__rhs) {
-        if (this != &__rhs) {
-            //__call_callbacks(erase_event);
-            // ios_base::copyfmt(__rhs);
-            //__tie_ = __rhs.__tie_;
-            __fill_ = __rhs.__fill_;
-            //__call_callbacks(copyfmt_event);
-            // exceptions(__rhs.exceptions());
-        }
-        return *this;
-    }
+    char fill() const;
+    char fill(char __ch);
+    ios &copyfmt(const ios &__rhs);
 
    private:
     char __fill_;
 };
 
-struct ostream : public ios {
-    ostream &operator<<(float f) { return *this; }
-    ostream &operator<<(const std::string &s) { return *this; }
+class ostream : public ios {
+   public:
+    ostream &put(char c);
+    ostream &flush();
+    ostream &operator<<(float f);
+    ostream &operator<<(const std::string &s);
+    ostream &operator<<(ostream &f(ostream &)) { return f(*this); }
+
+   protected:
+    std::string buffer_;
 };
+
+ostream &endl(ostream &out);
+extern ostream cout;
 
 struct istream {};
 
@@ -70,6 +59,13 @@ inline std::string to_string(T x) {
 }
 
 template <>
+inline std::string to_string(float x) {
+    char buf[100];
+    snprintf(buf, sizeof(buf), "%f", x);
+    return std::string(buf);
+}
+
+template <>
 inline std::string to_string(long unsigned int x) {
     char buf[100];
     snprintf(buf, sizeof(buf), "%lu", x);
@@ -78,41 +74,34 @@ inline std::string to_string(long unsigned int x) {
 
 struct stringstream : public ostream {
     stringstream() {}
-    stringstream(const std::string &s) : buffer(s) {}
+    stringstream(const std::string &s) { buffer_ = s; }
 
-    void write(const char *p, size_t sz) { buffer += std::string(p, sz); }
+    void write(const char *p, size_t sz) { buffer_ += std::string(p, sz); }
 
     void read(char *out, size_t sz) {
         size_t rd = 0;
-        memcpy(out, buffer.c_str(), rd = std::min(sz, buffer.size()));
-        buffer.erase(0, rd);
+        memcpy(out, buffer_.c_str(), rd = std::min(sz, buffer_.size()));
+        buffer_.erase(0, rd);
     }
 
-    stringstream &operator<<(const std::string &in) {
-        buffer += in;
-        return *this;
-    }
-
-    std::string str() { return buffer; }
-
-    std::string buffer;
+    std::string str() { return buffer_; }
 };
 
+/*
 inline bool getline(stringstream &ss, std::string &s, char delim) {
-    size_t nl = ss.buffer.find(delim);
+    size_t nl = ss.buffer_.find(delim);
     if (nl == std::string::npos) {
-        if (!ss.buffer.empty()) {
-            s = ss.buffer;
-            ss.buffer.clear();
+        if (!ss.buffer_.empty()) {
+            s = ss.buffer_;
+            ss.buffer_.clear();
             return true;
         } else {
             return false;
         }
     }
-    s = ss.buffer.substr(0, nl);
-    ss.buffer.erase(0, nl + 1);
+    s = ss.buffer_.substr(0, nl);
+    ss.buffer_.erase(0, nl + 1);
     return true;
-}
+}*/
 
 }  // namespace std
-
