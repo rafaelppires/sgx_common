@@ -72,6 +72,11 @@ inline std::string to_string(long unsigned int x) {
     return std::string(buf);
 }
 
+struct ostringstream : public ostream {
+    string str() const { return buffer_; }
+    void str(const string &s) { buffer_ = s; };
+};
+
 struct stringstream : public ostream {
     stringstream() {}
     stringstream(const std::string &s) { buffer_ = s; }

@@ -1,7 +1,8 @@
 #pragma once
+
+#include <functional>
 #include <string>
 #include <vector>
-#include <functional>
 
 void csv_parse(std::string filename,
                std::function<void(const std::vector<std::string>&)> f);

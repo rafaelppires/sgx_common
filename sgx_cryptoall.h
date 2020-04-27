@@ -9,7 +9,7 @@
 #endif
 
 #if defined(__cplusplus) && !defined(ENCLAVED)  // cxx && !sgx {
-#include <crypto++/rsa.h>
+#include <cryptopp/rsa.h>
 #endif  // } cxx && !sgx
 
 #if defined(__cplusplus)
