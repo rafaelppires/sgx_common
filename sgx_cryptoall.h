@@ -39,6 +39,7 @@ std::string sha256(const std::string &);
 std::string sha224(const std::string &);
 std::string b64_encode(const std::string &);
 std::string b64_decode(const std::string &);
+std::string hex_encode(const std::string &);
 std::string get_rand(size_t);
 
 #ifdef ENCLAVED
@@ -105,7 +106,8 @@ inline bool isasciigraph(uint8_t c) { return c >= 0x20 && c <= 0x7E; }
 
 //------------------------------------------------------------------------------
 inline const char *hexchar(uint8_t c) {
-    static std::string hex = "0123456789ABCDEF";
+    //static std::string hex = "0123456789ABCDEF";
+    static std::string hex = "0123456789abcdef";
     static char ret[3];
     ret[0] = hex[(c >> 4) % hex.size()];
     ret[1] = hex[(c & 0xF) % hex.size()];

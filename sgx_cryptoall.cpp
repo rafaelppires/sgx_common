@@ -303,8 +303,8 @@ printf("(5)\n");
     return ciphertext_size;
 */
 #endif
-    return 0;
 #endif
+    return 0;
 }
 
 //------------------------------------------------------------------------------
@@ -697,6 +697,15 @@ std::string sha224(const std::string &data) {
     digest = std::string((char *)hash, 28);
 #endif
     return digest;
+}
+
+//------------------------------------------------------------------------------
+std::string hex_encode(const std::string &data) {
+    std::string ret;
+    std::for_each(data.begin(), data.end(), [&](const char &c) {
+        ret += hexchar(c);
+    });
+    return ret;
 }
 
 //------------------------------------------------------------------------------

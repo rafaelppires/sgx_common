@@ -1,5 +1,6 @@
 #include <csv.h>
 #include <stringutils.h>
+#include <sys/stat.h>
 
 #include <fstream>
 #include <iostream>
@@ -22,6 +23,10 @@ void csvitem_tomemory(std::vector<std::vector<std::string>>& v,
 //------------------------------------------------------------------------------
 void csv_parse(std::string filename,
                std::function<void(const std::vector<std::string>&)> f) {
+    struct stat buffer;
+    if (stat(filename.c_str(), &buffer) != 0) {
+        std::cerr << "File: " << filename << " not found\n";
+    }
     std::ifstream fin(filename.c_str());
     while (fin.good()) {
         std::string line;
