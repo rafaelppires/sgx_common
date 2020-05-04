@@ -21,15 +21,20 @@ void csvitem_tomemory(std::vector<std::vector<std::string>>& v,
 }
 
 //------------------------------------------------------------------------------
-void csv_parse(std::string filename,
-               std::function<void(const std::vector<std::string>&)> f) {
+bool csv_parse(std::string filename,
+               std::function<void(const std::vector<std::string>&)> f,
+               bool hasheader) {
     struct stat buffer;
     if (stat(filename.c_str(), &buffer) != 0) {
         std::cerr << "File: " << filename << " not found\n";
+        return false;
     }
     std::ifstream fin(filename.c_str());
+    std::string line;
+    if (hasheader && fin.good()) {
+        std::getline(fin, line);  // drops first line
+    }
     while (fin.good()) {
-        std::string line;
         std::getline(fin, line);
         if (line.empty()) continue;
         if (line[line.size() - 1] == 13) {  // carriage return
@@ -37,6 +42,7 @@ void csv_parse(std::string filename,
         }
         f(split(line, ",", '\"'));
     }
+    return true;
 }
 
 //------------------------------------------------------------------------------
