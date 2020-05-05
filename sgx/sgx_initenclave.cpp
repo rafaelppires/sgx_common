@@ -89,8 +89,10 @@ int initialize_enclave(sgx_enclave_id_t &global_eid,
 
 //------------------------------------------------------------------------------
 int destroy_enclave(sgx_enclave_id_t eid) {
-    if (sgx_destroy_enclave(eid) != SGX_SUCCESS) {
-        printinfo(LLCRIT, "App: Error: destroy_enclave() < 0.");
+    sgx_status_t err;
+    if ((err = sgx_destroy_enclave(eid)) != SGX_SUCCESS) {
+        printinfo(LLCRIT, "App: Error: destroy_enclave()\n");
+        print_error_message(err);
         return -1;
     }
     return 0;
