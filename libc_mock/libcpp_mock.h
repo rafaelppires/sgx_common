@@ -14,6 +14,7 @@ using ::lconv;
 using ::localeconv;
 typedef ssize_t streamsize;
 
+//------------------------------------------------------------------------------
 struct ios_base {
     streamsize precision(streamsize prec) { return 5; }
     streamsize width() const;
@@ -23,6 +24,7 @@ struct ios_base {
     streamsize __width_;
 };
 
+//------------------------------------------------------------------------------
 struct ios : public ios_base {
     char fill() const;
     char fill(char __ch);
@@ -32,18 +34,47 @@ struct ios : public ios_base {
     char __fill_;
 };
 
+//------------------------------------------------------------------------------
 class ostream : public ios {
    public:
     ostream &put(char c);
     ostream &flush();
-    ostream &operator<<(float f);
+
+    ostream &operator<<(int);
+    ostream &operator<<(long);
+    ostream &operator<<(float);
+    ostream &operator<<(unsigned);
+    ostream &operator<<(long unsigned);
     ostream &operator<<(const std::string &s);
-    ostream &operator<<(ostream &f(ostream &)) { return f(*this); }
+    ostream &operator<<(ostream &f(ostream &));
 
    protected:
     std::string buffer_;
 };
 
+//------------------------------------------------------------------------------
+struct stringstream : public ostream {
+    stringstream() {}
+    stringstream(const std::string &s) { buffer_ = s; }
+
+    void write(const char *p, size_t sz) { buffer_ += std::string(p, sz); }
+
+    void read(char *out, size_t sz) {
+        size_t rd = 0;
+        memcpy(out, buffer_.c_str(), rd = std::min(sz, buffer_.size()));
+        buffer_.erase(0, rd);
+    }
+
+    std::string str() { return buffer_; }
+};
+
+//------------------------------------------------------------------------------
+struct ostringstream : public ostream {
+    string str() const { return buffer_; }
+    void str(const string &s) { buffer_ = s; };
+};
+
+//------------------------------------------------------------------------------
 ostream &endl(ostream &out);
 extern ostream cout;
 
@@ -51,10 +82,25 @@ struct istream {};
 
 int rand();
 
+//------------------------- to_string ------------------------------------------
 template <typename T>
 inline std::string to_string(T x) {
     char buf[100];
     snprintf(buf, sizeof(buf), "%d", x);
+    return std::string(buf);
+}
+
+template <typename T>
+inline std::string to_string(long x) {
+    char buf[100];
+    snprintf(buf, sizeof(buf), "%ld", x);
+    return std::string(buf);
+}
+
+template <typename T>
+inline std::string to_string(unsigned x) {
+    char buf[100];
+    snprintf(buf, sizeof(buf), "%u", x);
     return std::string(buf);
 }
 
@@ -72,26 +118,7 @@ inline std::string to_string(long unsigned int x) {
     return std::string(buf);
 }
 
-struct ostringstream : public ostream {
-    string str() const { return buffer_; }
-    void str(const string &s) { buffer_ = s; };
-};
-
-struct stringstream : public ostream {
-    stringstream() {}
-    stringstream(const std::string &s) { buffer_ = s; }
-
-    void write(const char *p, size_t sz) { buffer_ += std::string(p, sz); }
-
-    void read(char *out, size_t sz) {
-        size_t rd = 0;
-        memcpy(out, buffer_.c_str(), rd = std::min(sz, buffer_.size()));
-        buffer_.erase(0, rd);
-    }
-
-    std::string str() { return buffer_; }
-};
-
+//------------------------------------------------------------------------------
 /*
 inline bool getline(stringstream &ss, std::string &s, char delim) {
     size_t nl = ss.buffer_.find(delim);

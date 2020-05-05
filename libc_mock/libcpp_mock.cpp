@@ -5,15 +5,37 @@ namespace std {
 //------------------ ostream ---------------------------------------------------
 ostream cout;
 
-ostream &ostream::operator<<(const std::string &s) {
+ostream& ostream::operator<<(int value) {
+    *this << to_string(value);
+    return *this;
+}
+
+ostream& ostream::operator<<(long value) {
+    *this << to_string(value);
+    return *this;
+}
+
+ostream& ostream::operator<<(unsigned value) {
+    *this << to_string(value);
+    return *this;
+}
+
+ostream& ostream::operator<<(long unsigned value) {
+    *this << to_string(value);
+    return *this;
+}
+
+ostream& ostream::operator<<(float value) {
+    *this << to_string(value);
+    return *this;
+}
+
+ostream& ostream::operator<<(const std::string& s) {
     buffer_ += s;
     return *this;
 }
 
-ostream &ostream::operator<<(float f) {
-    *this << to_string(f);
-    return *this;
-}
+ostream& ostream::operator<<(ostream& f(ostream&)) { return f(*this); }
 
 ostream& endl(ostream& out) {
     out.put('\n');
@@ -34,7 +56,7 @@ ostream& ostream::flush() {
 
 int rand() { return ::rand(); }
 
-//------------------ ios_base ---------------------------------------------------
+//------------------ ios_base --------------------------------------------------
 streamsize ios_base::width() const { return __width_; }
 
 streamsize ios_base::width(streamsize __wide) {
