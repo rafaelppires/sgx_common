@@ -1,5 +1,5 @@
 #include <csv.h>
-#include <stringutils.h>
+#include <stringtools.h>
 #include <sys/stat.h>
 
 #include <fstream>
@@ -22,8 +22,7 @@ void csvitem_tomemory(std::vector<std::vector<std::string>>& v,
 
 //------------------------------------------------------------------------------
 bool csv_parse(std::string filename,
-               std::function<void(const std::vector<std::string>&)> f,
-               bool hasheader) {
+               std::function<void(const std::vector<std::string>&)> f) {
     struct stat buffer;
     if (stat(filename.c_str(), &buffer) != 0) {
         std::cerr << "File: " << filename << " not found\n";
@@ -31,16 +30,24 @@ bool csv_parse(std::string filename,
     }
     std::ifstream fin(filename.c_str());
     std::string line;
-    if (hasheader && fin.good()) {
-        std::getline(fin, line);  // drops first line
+
+    if (fin.good()) {
+        std::getline(fin, line);                   // drops first line
+        if (!line.empty() && !isdigit(line[0])) {  // unles it starts by a digit
+            line.clear();
+        }
     }
+
     while (fin.good()) {
-        std::getline(fin, line);
+        if (line.empty()) {  // skips reading the first line again
+            std::getline(fin, line);
+        }
         if (line.empty()) continue;
         if (line[line.size() - 1] == 13) {  // carriage return
             line.erase(line.size() - 1, 1);
         }
         f(split(line, ",", '\"'));
+        line.clear();
     }
     return true;
 }
