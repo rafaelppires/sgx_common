@@ -23,13 +23,6 @@ typedef CryptoPP::RSA::PublicKey PubKey;
 typedef CryptoPP::RSA::PrivateKey PrvKey;
 #endif
 
-std::string encrypt_aes(const std::string &key, const std::string &plain);
-std::string encrypt_aesgcm(const std::string &key, const std::string &plain);
-void encrypt_aes_inline(const std::string &key, std::string &plain);
-void decrypt_aes_inline(const std::string &key, std::string &);
-std::string decrypt_aes(const std::string &key, const std::string &cipher);
-std::pair<bool, std::string> decrypt_aesgcm(const std::string &key,
-                                            const std::string &cipher);
 std::string encrypt_rsa(const PubKey &pubkey, const std::string &plain);
 std::string decrypt_rsa(const PrvKey &prvkey, const std::string &cipher);
 std::string printable(const std::string &s);
@@ -69,18 +62,8 @@ std::string unseal(const std::string &src);
 extern "C" {
 #endif  // cpp
 
-#define AES128 1
-#define AES256 2
-int decrypt_aes(char type, const uint8_t *src, uint8_t *dst, size_t len,
-                const uint8_t *key, uint8_t *iv);
-int encrypt_aes(char type, const uint8_t *src, uint8_t *dst, size_t len,
-                const uint8_t *key, uint8_t *iv);
 int encrypt_rsa(const uint8_t *plaintext, size_t plain_len, char *key,
                 uint8_t *ciphertext, size_t cipher_len);
-void encrypt_aes_gcm(const uint8_t *plain, int in_len, uint8_t *ciphertext,
-                     uint8_t *tag, const uint8_t *key, const uint8_t *iv);
-int decrypt_aes_gcm(const uint8_t *ciphertext, int in_len, uint8_t *decrypted,
-                    uint8_t *reftag, const uint8_t *key, const uint8_t *iv);
 
 #ifdef ENCLAVED
 /** output buffers are all allocated inside these functions
