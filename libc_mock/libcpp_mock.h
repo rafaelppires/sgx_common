@@ -43,6 +43,7 @@ class ostream : public ios {
     ostream &operator<<(int);
     ostream &operator<<(long);
     ostream &operator<<(float);
+    ostream &operator<<(double);
     ostream &operator<<(unsigned);
     ostream &operator<<(long unsigned);
     ostream &operator<<(const std::string &s);

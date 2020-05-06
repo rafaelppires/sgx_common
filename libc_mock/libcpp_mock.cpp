@@ -30,6 +30,11 @@ ostream& ostream::operator<<(float value) {
     return *this;
 }
 
+ostream& ostream::operator<<(double value) {
+    *this << to_string(value);
+    return *this;
+}
+
 ostream& ostream::operator<<(const std::string& s) {
     buffer_ += s;
     return *this;
