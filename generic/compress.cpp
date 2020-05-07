@@ -15,17 +15,20 @@ const size_t MESSAGE_MAX_BYTES = 1024,
 std::string compress(const char* buff, size_t n) {
     LZ4_streamHC_t lz4Stream_body = {0};
     LZ4_streamHC_t* lz4Stream = &lz4Stream_body;
-    static char ringbuff[RING_BUFFER_BYTES];
+    char* ringbuff = new char[RING_BUFFER_BYTES];
     int ring_off = 0;
     size_t in_off = 0;
     std::string ret;
-int i =0;
-    for (;;) {++i;
+    int i = 0;
+    for (;;) {
+        ++i;
         char* const inpPtr = &ringbuff[ring_off];
         const int inpBytes = std::min(n - in_off, MESSAGE_MAX_BYTES);
-        memcpy(inpPtr, buff+in_off, inpBytes);
+        memcpy(inpPtr, buff + in_off, inpBytes);
         in_off += inpBytes;
-        if (0 == inpBytes) { break; }
+        if (0 == inpBytes) {
+            break;
+        }
 
 #define CMPBUFSIZE (LZ4_COMPRESSBOUND(MESSAGE_MAX_BYTES))
         {
@@ -45,12 +48,13 @@ int i =0;
     }
     int32_t zero = 0;
     ret += std::string((char*)&zero, sizeof(zero));
+    delete[] ringbuff;
     return ret;
 }
 
 //------------------------------------------------------------------------------
 std::string decompress(const char* buff, size_t n) {
-    static char decBuf[DEC_BUFFER_BYTES];
+    char* decBuf = new char[DEC_BUFFER_BYTES];
     int decOffset = 0;
     LZ4_streamDecode_t lz4StreamDecode_body = {0};
     LZ4_streamDecode_t* lz4StreamDecode = &lz4StreamDecode_body;
@@ -92,5 +96,6 @@ std::string decompress(const char* buff, size_t n) {
                 decOffset = 0;
         }
     }
+    delete[] decBuf;
     return ret;
 }
