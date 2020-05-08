@@ -1,4 +1,6 @@
 #include "sgx_cryptoall.h"
+#include <algorithm>
+#include <string.h>
 
 #ifdef ENCLAVED
 #include <libc_mock/libcpp_mock.h>
