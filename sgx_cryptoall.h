@@ -8,14 +8,10 @@
 #include <sgx_tseal.h>
 #endif
 
-#if defined(__cplusplus) && !defined(ENCLAVED)  // cxx && !sgx {
-#include <cryptopp/rsa.h>
-#endif  // } cxx && !sgx
-
 #if defined(__cplusplus)
 namespace Crypto {
 
-#ifdef ENCLAVED
+#if defined(ENCLAVED) || defined(USE_OPENSSL)
 typedef int PubKey;  // temporary
 typedef int PrvKey;  // temporary
 #else
@@ -57,7 +53,7 @@ std::string sealEnclave(const std::string &src);
 std::string sealSigner(const std::string &src);
 std::string unseal(const std::string &src);
 #endif
-}
+}  // namespace Crypto
 
 extern "C" {
 #endif  // cpp
@@ -89,7 +85,7 @@ inline bool isasciigraph(uint8_t c) { return c >= 0x20 && c <= 0x7E; }
 
 //------------------------------------------------------------------------------
 inline const char *hexchar(uint8_t c) {
-    //static std::string hex = "0123456789ABCDEF";
+    // static std::string hex = "0123456789ABCDEF";
     static std::string hex = "0123456789abcdef";
     static char ret[3];
     ret[0] = hex[(c >> 4) % hex.size()];
