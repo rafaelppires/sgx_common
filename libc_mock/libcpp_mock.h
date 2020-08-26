@@ -77,7 +77,8 @@ struct ostringstream : public ostream {
 
 //------------------------------------------------------------------------------
 ostream &endl(ostream &out);
-extern ostream cout;
+ostream &flush(ostream &out);
+extern ostream cout, cerr;
 
 struct istream {};
 

@@ -3,7 +3,7 @@
 namespace std {
 
 //------------------ ostream ---------------------------------------------------
-ostream cout;
+ostream cout, cerr;
 
 ostream& ostream::operator<<(int value) {
     *this << to_string(value);
@@ -44,6 +44,11 @@ ostream& ostream::operator<<(ostream& f(ostream&)) { return f(*this); }
 
 ostream& endl(ostream& out) {
     out.put('\n');
+    out.flush();
+    return out;
+}
+
+ostream& flush(ostream& out) {
     out.flush();
     return out;
 }
