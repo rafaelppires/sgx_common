@@ -1,5 +1,4 @@
-#ifndef _CRYPTO_ALL_H_
-#define _CRYPTO_ALL_H_
+#pragma once
 
 #include <stdint.h>
 #include <string>
@@ -26,10 +25,14 @@ void decodeBase64PublicKey(const std::string &filename, PubKey &key);
 void decodeBase64PrivateKey(const std::string &filename, PrvKey &key);
 std::string sha256(const std::string &);
 std::string sha224(const std::string &);
-std::string b64_encode(const std::string &);
-std::string b64_decode(const std::string &);
 std::string hex_encode(const std::string &);
 std::string get_rand(size_t);
+
+template<typename T>
+std::string b64_encode(const T &);
+
+template<typename T>
+std::string b64_decode(const T &);
 
 #ifdef ENCLAVED
 class StateSha256 {
@@ -52,7 +55,7 @@ std::string sha256(StateSha256 &s);
 std::string sealEnclave(const std::string &src);
 std::string sealSigner(const std::string &src);
 std::string unseal(const std::string &src);
-#endif
+#endif // ENCLAVED
 }  // namespace Crypto
 
 extern "C" {
@@ -120,4 +123,4 @@ inline bool is_cipher(const uint8_t *buff, size_t len) {
 }
 #endif
 
-#endif  // .h
+#include "sgx_cryptoall.hpp"

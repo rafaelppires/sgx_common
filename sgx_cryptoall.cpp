@@ -8,14 +8,7 @@
 #include <sgx_trts.h>
 #endif
 
-#ifdef USE_OPENSSL  // openssl {
-#include <openssl/evp.h>
-#include <openssl/pem.h>
-#include <openssl/rsa.h>
-#include <openssl/sha.h>
-#elif defined(ENCLAVED)  // } openssl else sgx {
-// maybe ipp stuff
-#else                    // } sgx else crypto++ {
+#if !defined(USE_OPENSSL) && !defined(ENCLAVED)
 #include <cryptopp/base64.h>
 #include <cryptopp/files.h>
 #include <cryptopp/cryptlib.h>
@@ -36,7 +29,7 @@ using CryptoPP::FileSource;
 using CryptoPP::StreamTransformationFilter;
 using CryptoPP::StringSink;
 using CryptoPP::StringSource;
-#endif  // } crypto++
+#endif  // crypto++
 
 //------------------------------------------------------------------------------
 #ifdef ENCLAVED
@@ -410,58 +403,6 @@ std::string hex_encode(const std::string &data) {
     std::for_each(data.begin(), data.end(), [&](const char &c) {
         ret += hexchar(c);
     });
-    return ret;
-}
-
-//------------------------------------------------------------------------------
-std::string b64_encode(const std::string &data) {
-    std::string ret;
-    if (data.empty()) return ret;
-#if !defined(ENCLAVED) && !defined(USE_OPENSSL)
-    StringSource ssrc(data, true /*pump all*/,
-                      new Base64Encoder(new StringSink(ret)));
-#elif defined(USE_OPENSSL)
-    BIO *bio, *b64;
-    BUF_MEM *bufferPtr;
-
-    b64 = BIO_new(BIO_f_base64());
-    bio = BIO_new(BIO_s_mem());
-    bio = BIO_push(b64, bio);
-
-    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);  // everything in one line
-    BIO_write(bio, data.c_str(), data.size());
-    BIO_flush(bio);
-    BIO_get_mem_ptr(bio, &bufferPtr);
-    ret = std::string(bufferPtr->data, bufferPtr->length);
-    BIO_free_all(bio);
-#endif
-    return ret;
-}
-
-//------------------------------------------------------------------------------
-std::string b64_decode(const std::string &data) {
-    std::string ret;
-#if !defined(ENCLAVED) && !defined(USE_OPENSSL)
-    StringSource ssrc(data, true /*pump all*/,
-                      new Base64Decoder(new StringSink(ret)));
-#elif defined(USE_OPENSSL)
-    BIO *b64, *bmem;
-
-    char *buffer = new char[data.size()];
-    memset(buffer, 0, data.size());
-
-    b64 = BIO_new(BIO_f_base64());
-    bmem = BIO_new_mem_buf(data.c_str(), data.size());
-    bmem = BIO_push(b64, bmem);
-
-    BIO_set_flags(bmem, BIO_FLAGS_BASE64_NO_NL);
-    BIO_set_close(bmem, BIO_CLOSE);
-    size_t outlen = BIO_read(bmem, buffer, data.size());
-
-    ret = std::string(buffer, outlen);
-    BIO_free_all(bmem);
-    delete[] buffer;
-#endif
     return ret;
 }
 
