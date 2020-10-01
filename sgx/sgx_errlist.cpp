@@ -2,7 +2,6 @@
 #include <stdio.h>
 
 //------------------------------------------------------------------------------
-/* Error code returned by sgx_create_enclave */
 sgx_errlist_t sgx_errlist[] = {
     {SGX_ERROR_UNEXPECTED, "Unexpected error occurred.", NULL},
     {SGX_ERROR_INVALID_PARAMETER, "Invalid parameter.", NULL},
@@ -32,7 +31,6 @@ sgx_errlist_t sgx_errlist[] = {
      NULL}};
 
 //------------------------------------------------------------------------------
-/* Check error conditions for loading enclave */
 #include <unistd.h>
 void print_error_message(sgx_status_t ret) {
     size_t idx = 0;
