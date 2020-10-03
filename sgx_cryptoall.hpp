@@ -6,11 +6,11 @@
 #endif
 
 //------------------------------------------------------------------------------
-template<typename T>
+template <typename T>
 std::string Crypto::b64_encode(const T &data) {
     std::string ret;
     if (data.empty()) return ret;
-#if defined(USE_OPENSSL)
+#ifdef USE_OPENSSL
     BIO *bio, *b64;
     BUF_MEM *bufferPtr;
 
@@ -32,10 +32,10 @@ std::string Crypto::b64_encode(const T &data) {
 }
 
 //------------------------------------------------------------------------------
-template<typename T>
+template <typename T>
 std::string Crypto::b64_decode(const T &data) {
     std::string ret;
-#if defined(USE_OPENSSL)
+#ifdef USE_OPENSSL
     BIO *b64, *bmem;
 
     char *buffer = new char[data.size()];
@@ -60,4 +60,40 @@ std::string Crypto::b64_decode(const T &data) {
 }
 
 //------------------------------------------------------------------------------
+template <typename T>
+T Crypto::sha224(const T &data) {
+    T digest;
+#if !defined(ENCLAVED) && !defined(USE_OPENSSL)
+    CryptoPP::SHA224 hash;
+    StringSource foo(
+        data, true,
+        new CryptoPP::HashFilter(hash, new CryptoPP::StringSink(digest)));
+#elif defined(USE_OPENSSL)
+    digest.resize(28);
+    SHA224((const uint8_t *)data.data(), data.size(), (uint8_t *)digest.data());
+#endif
+    return digest;
+}
 
+//------------------------------------------------------------------------------
+template <typename T>
+T Crypto::sha256(const T &data) {
+    std::string digest;
+#if !defined(ENCLAVED) && !defined(USE_OPENSSL)
+    CryptoPP::SHA256 hash;
+    StringSource foo(
+        data, true,
+        new CryptoPP::HashFilter(hash, new CryptoPP::StringSink(digest)));
+#else
+    uint8_t hash[32];
+#ifdef ENCLAVED  // intel
+    sgx_sha256_msg((const uint8_t *)data.c_str(), data.size(), &hash);
+#else            // openssl
+    SHA256((const uint8_t *)data.c_str(), data.size(), hash);
+#endif
+    digest = std::string((char *)hash, 32);
+#endif
+    return digest;
+}
+
+//------------------------------------------------------------------------------

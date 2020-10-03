@@ -312,26 +312,6 @@ std::string decrypt_rsa(const PrvKey &prvkey, const std::string &cipher) {
     return recovered;
 }
 
-//------------------------------------------------------------------------------
-std::string sha256(const std::string &data) {
-    std::string digest;
-#if !defined(ENCLAVED) && !defined(USE_OPENSSL)
-    CryptoPP::SHA256 hash;
-    StringSource foo(
-        data, true,
-        new CryptoPP::HashFilter(hash, new CryptoPP::StringSink(digest)));
-#else
-    uint8_t hash[32];
-#ifdef ENCLAVED  // intel
-    sgx_sha256_msg((const uint8_t *)data.c_str(), data.size(), &hash);
-#else            // openssl
-    SHA256((const uint8_t *)data.c_str(), data.size(), hash);
-#endif
-    digest = std::string((char *)hash, 32);
-#endif
-    return digest;
-}
-
 #ifdef ENCLAVED
 //------------------------------------------------------------------------------
 bool sha256_init(StateSha256 &state) {
@@ -380,22 +360,6 @@ std::string hmac_sha256_get(HMAC_CTX **state) {
 #endif
 
 #endif
-
-//------------------------------------------------------------------------------
-std::string sha224(const std::string &data) {
-    std::string digest;
-#if !defined(ENCLAVED) && !defined(USE_OPENSSL)
-    CryptoPP::SHA224 hash;
-    StringSource foo(
-        data, true,
-        new CryptoPP::HashFilter(hash, new CryptoPP::StringSink(digest)));
-#elif defined(USE_OPENSSL)
-    uint8_t hash[28];
-    SHA224((const uint8_t *)data.data(), data.size(), hash);
-    digest = std::string((char *)hash, 28);
-#endif
-    return digest;
-}
 
 //------------------------------------------------------------------------------
 std::string hex_encode(const std::string &data) {

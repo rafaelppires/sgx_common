@@ -23,16 +23,20 @@ std::string decrypt_rsa(const PrvKey &prvkey, const std::string &cipher);
 std::string printable(const std::string &s);
 void decodeBase64PublicKey(const std::string &filename, PubKey &key);
 void decodeBase64PrivateKey(const std::string &filename, PrvKey &key);
-std::string sha256(const std::string &);
-std::string sha224(const std::string &);
 std::string hex_encode(const std::string &);
 std::string get_rand(size_t);
 
-template<typename T>
+template <typename T>
 std::string b64_encode(const T &);
 
-template<typename T>
+template <typename T>
 std::string b64_decode(const T &);
+
+template <typename T>
+T sha256(const T &);
+
+template <typename T>
+T sha224(const T &);
 
 #ifdef ENCLAVED
 class StateSha256 {
@@ -55,7 +59,7 @@ std::string sha256(StateSha256 &s);
 std::string sealEnclave(const std::string &src);
 std::string sealSigner(const std::string &src);
 std::string unseal(const std::string &src);
-#endif // ENCLAVED
+#endif  // ENCLAVED
 }  // namespace Crypto
 
 extern "C" {
