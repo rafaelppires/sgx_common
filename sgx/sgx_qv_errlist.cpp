@@ -68,6 +68,11 @@ sgx_qv_errlist_t sgx_qv_errlist[] = {
      "The Quote Library was available but the quote library could not retrieve "
      "the data.",
      nullptr},
+    {SGX_QL_NETWORK_ERROR,
+     "If the platform quote provider library uses the network to retrieve the "
+     "verification collateral, this error will be returned when it encounters "
+     "network connectivity problems.",
+     NULL},
     {SGX_QL_ERROR_UNEXPECTED, " An unexpected internal error occurred.",
      nullptr}};
 
