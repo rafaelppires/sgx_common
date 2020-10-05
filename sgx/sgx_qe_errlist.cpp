@@ -6,8 +6,7 @@ sgx_qe_errlist_t sgx_qe_errlist[] = {
      "The required size in bytes is returned in the memory pointed to by "
      "p_quote_size."},
     {SGX_QL_ERROR_UNEXPECTED, "Unexpected internal erroroccurred.", nullptr},
-    {SGX_QL_ERROR_INVALID_PARAMETER, "Invalid parameter.",
-     "p_quote_size must not be NULL."},
+    {SGX_QL_ERROR_INVALID_PARAMETER, "Invalid parameter.", NULL},
     {SGX_QL_ATT_KEY_NOT_INITIALIZED,
      "Platform quoting infrastructure does not have the attestation key "
      "available to generate quotes.",

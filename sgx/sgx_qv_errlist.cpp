@@ -1,4 +1,5 @@
 #include <sgx_qv_errlist.h>
+#include <sstream>
 
 //------------------------------------------------------------------------------
 sgx_qv_errlist_t sgx_qv_errlist[] = {
@@ -82,7 +83,9 @@ void qv_retrieve_error(quote3_error_t code, std::string &error,
         }
     }
     if (i == total) {
-        error = "Unknown error " + std::to_string(code);
+        std::stringstream ss;
+        ss << std::hex << code;
+        error = "Unknown error " + ss.str();
     }
 }
 
