@@ -60,6 +60,7 @@ sgx_qe_errlist_t sgx_qe_errlist[] = {
      "Generic message parsing error from the attestation infrastructure while "
      "retrieving the platform data.",
      nullptr},
+    {SGX_QL_NETWORK_ERROR, "Network error when retrieving PCK certs", NULL},
     {SGX_QL_PLATFORM_UNKNOWN, "This platform is an unrecognized SGX platform.",
      nullptr}};
 
