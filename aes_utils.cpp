@@ -1,21 +1,21 @@
 #include <aes_utils.h>
 #include <crypto_common.h>
-#include <iostream>
 #include <string.h>
+#include <iostream>
 #ifdef USE_OPENSSL  // openssl {
 #include <openssl/evp.h>
 #elif defined(ENCLAVED)  // } else if sgx {
 // maybe ipp stuff
-#else // no openssl nor enclave, so crypto++
+#else                    // no openssl nor enclave, so crypto++
 #include <cryptopp/aes.h>
-#include <cryptopp/modes.h>
 #include <cryptopp/filters.h>
-using CryptoPP::AES;                                                            
-using CryptoPP::CTR_Mode;                                                       
-using CryptoPP::StreamTransformationFilter;
-using CryptoPP::StringSource;
-using CryptoPP::StringSink;
+#include <cryptopp/modes.h>
+using CryptoPP::AES;
 using CryptoPP::byte;
+using CryptoPP::CTR_Mode;
+using CryptoPP::StreamTransformationFilter;
+using CryptoPP::StringSink;
+using CryptoPP::StringSource;
 #endif
 
 #if defined(__cplusplus)
@@ -38,7 +38,7 @@ std::string encrypt_aes(const std::string &k, const std::string &plain) {
     memcpy(key, k.c_str(), std::min(sizeof(key), k.size()));
 
     // Creates a rand IV
-    std::string iv = get_rand(16);
+    auto iv = get_rand(16);
 #if !defined(ENCLAVED) && !defined(USE_OPENSSL)
     try {
         CTR_Mode<AES>::Encryption e;
@@ -63,7 +63,7 @@ std::string encrypt_aes(const std::string &k, const std::string &plain) {
 #endif
 
     // First 16 bytes corresponds to the generated IV
-    return iv + cipher;
+    return std::string(iv.begin(), iv.end()) + cipher;
 }
 
 //------------------------------------------------------------------------------
@@ -107,17 +107,16 @@ std::string decrypt_aes(const std::string &k, const std::string &cipher) {
 //------------------------------------------------------------------------------
 std::string encrypt_aesgcm(const std::string &key, const std::string &plain) {
     unsigned iv_size = 12, tag_size = 16, meta_size = iv_size + tag_size;
-    std::string tag, iv, cipher;
+    std::string tag, cipher;
     unsigned char cipher_buff[plain.size()], tag_buff[tag_size];
 
     // Creates a rand IV
-    iv = get_rand(iv_size);
+    auto iv = get_rand(iv_size);
     encrypt_aes_gcm((const uint8_t *)plain.c_str(), plain.size(), cipher_buff,
-                    tag_buff, (const uint8_t *)key.c_str(),
-                    (uint8_t *)iv.data());
+                    tag_buff, (const uint8_t *)key.c_str(), iv.data());
     tag = std::string((char *)tag_buff, tag_size);
     cipher = std::string((char *)cipher_buff, plain.size());
-    return iv + cipher + tag;
+    return std::string(iv.begin(), iv.end()) + cipher + tag;
 }
 
 //------------------------------------------------------------------------------

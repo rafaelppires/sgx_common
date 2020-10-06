@@ -8,6 +8,8 @@
 #endif
 
 #if defined(__cplusplus)
+#include <vector>
+
 namespace Crypto {
 
 #if defined(ENCLAVED) || defined(USE_OPENSSL)
@@ -24,7 +26,7 @@ std::string printable(const std::string &s);
 void decodeBase64PublicKey(const std::string &filename, PubKey &key);
 void decodeBase64PrivateKey(const std::string &filename, PrvKey &key);
 std::string hex_encode(const std::string &);
-std::string get_rand(size_t);
+std::vector<uint8_t> get_rand(size_t);
 
 template <typename T>
 std::string b64_encode(const T &);

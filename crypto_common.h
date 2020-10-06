@@ -1,4 +1,5 @@
 #pragma once
 
-#include <string>
-std::string get_rand(size_t len);
+#include <cstdint>
+#include <vector>
+std::vector<uint8_t> get_rand(size_t len);
