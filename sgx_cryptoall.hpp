@@ -78,20 +78,20 @@ T Crypto::sha224(const T &data) {
 //------------------------------------------------------------------------------
 template <typename T>
 T Crypto::sha256(const T &data) {
-    std::string digest;
+    T digest(32, 0);
 #if !defined(ENCLAVED) && !defined(USE_OPENSSL)
     CryptoPP::SHA256 hash;
     StringSource foo(
         data, true,
         new CryptoPP::HashFilter(hash, new CryptoPP::StringSink(digest)));
 #else
-    uint8_t hash[32];
+    uint8_t *hash = digest.data();
 #ifdef ENCLAVED  // intel
-    sgx_sha256_msg((const uint8_t *)data.c_str(), data.size(), &hash);
+    sgx_sha256_msg((const uint8_t *)data.data(), data.size(),
+                   (sgx_sha256_hash_t *)&hash);
 #else            // openssl
     SHA256((const uint8_t *)data.c_str(), data.size(), hash);
 #endif
-    digest = std::string((char *)hash, 32);
 #endif
     return digest;
 }
