@@ -85,13 +85,7 @@ T Crypto::sha256(const T &data) {
         data, true,
         new CryptoPP::HashFilter(hash, new CryptoPP::StringSink(digest)));
 #else
-    uint8_t *hash = digest.data();
-#ifdef ENCLAVED  // intel
-    sgx_sha256_msg((const uint8_t *)data.data(), data.size(),
-                   (sgx_sha256_hash_t *)&hash);
-#else            // openssl
-    SHA256((const uint8_t *)data.c_str(), data.size(), hash);
-#endif
+    SHA256((const uint8_t *)data.data(), data.size(), digest.data());
 #endif
     return digest;
 }
