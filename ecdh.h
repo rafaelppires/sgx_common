@@ -9,7 +9,8 @@ class ECDH {
     ~ECDH();
     std::vector<uint8_t> derive_shared_key();
     std::vector<uint8_t> pubkey_serialize();
-    void peer_pubkey(const std::vector<uint8_t> &);
+    template<typename T>
+    void peer_pubkey(const T &);
 
    private:
     static const int curve;
@@ -18,3 +19,6 @@ class ECDH {
     static int error_print(const char *str, size_t len, void *u);
     EVP_PKEY *keypair_, *peer_pubkey_;
 };
+
+#include <ecdh.hpp>
+
