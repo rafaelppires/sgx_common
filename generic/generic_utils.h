@@ -16,3 +16,4 @@ void change_dir( char *file );
 void exit_error( int exit_code, const char *fmt, ... );
 int set_rand_seed(); 
 
+double bytes_human(int bytes, std::string &unit_str);

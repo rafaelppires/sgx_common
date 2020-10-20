@@ -70,3 +70,21 @@ void printinfo(uint8_t level, const char *format, ...) {
 }
 
 //------------------------------------------------------------------------------
+double bytes_human(int bytes, std::string &unit_str) {
+    int oneKiB = 1024, oneMiB = oneKiB * oneKiB, oneGiB = oneKiB * oneMiB;
+    if (bytes < oneKiB) {
+        unit_str = "B";
+        return bytes;
+    } else if (bytes < oneMiB) {
+        unit_str = "KiB";
+        return double(bytes) / oneKiB;
+    } else if (bytes < oneGiB) {
+        unit_str = "MiB";
+        return double(bytes) / oneMiB;
+    } else {
+        unit_str = "GiB";
+        return double(bytes) / oneGiB;
+    }
+}
+
+//------------------------------------------------------------------------------
