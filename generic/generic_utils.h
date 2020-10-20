@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <string>
 
 #define LLNONE  0
 #define LLCRIT  1
