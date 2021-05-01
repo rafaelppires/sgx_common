@@ -1,7 +1,7 @@
-#include <generic_utils.h>
+#include "../generic/generic_utils.h"
 #include <pwd.h>
-#include <sgx_errlist.h>
-#include <sgx_initenclave.h>
+#include "sgx_errlist.h"
+#include "sgx_initenclave.h"
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
