@@ -6,23 +6,25 @@
 #include <iostream>
 
 //------------------------------------------------------------------------------
-void csvitem_print(const std::vector<std::string>& item) {
+bool csvitem_print(const std::vector<std::string>& item) {
     for (auto& i : item) {
         if (&i != &item[0]) std::cout << " | ";
         std::cout << i;
     }
     std::cout << std::endl;
+    return true;
 }
 
 //------------------------------------------------------------------------------
-void csvitem_tomemory(std::vector<std::vector<std::string>>& v,
+bool csvitem_tomemory(std::vector<std::vector<std::string>>& v,
                       const std::vector<std::string>& item) {
     v.push_back(item);
+    return true;
 }
 
 //------------------------------------------------------------------------------
 bool csv_parse(std::string filename,
-               std::function<void(const std::vector<std::string>&)> f) {
+               std::function<bool(const std::vector<std::string>&)> f) {
     struct stat buffer;
     if (stat(filename.c_str(), &buffer) != 0) {
         std::cerr << "File: " << filename << " not found\n";
@@ -38,7 +40,8 @@ bool csv_parse(std::string filename,
         }
     }
 
-    while (fin.good()) {
+    bool cont = true;
+    while (fin.good() && cont) {
         if (line.empty()) {  // skips reading the first line again
             std::getline(fin, line);
         }
@@ -46,7 +49,7 @@ bool csv_parse(std::string filename,
         if (line[line.size() - 1] == 13) {  // carriage return
             line.erase(line.size() - 1, 1);
         }
-        f(split(line, ",", '\"'));
+        cont = f(split(line, ",", '\"'));
         line.clear();
     }
     return true;
