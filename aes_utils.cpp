@@ -108,14 +108,15 @@ std::string decrypt_aes(const std::string &k, const std::string &cipher) {
 std::string encrypt_aesgcm(const std::string &key, const std::string &plain) {
     unsigned iv_size = 12, tag_size = 16, meta_size = iv_size + tag_size;
     std::string tag, cipher;
-    unsigned char cipher_buff[plain.size()], tag_buff[tag_size];
-
+    unsigned char *cipher_buff = reinterpret_cast<unsigned char *>(malloc(plain.size()));
+    unsigned char tag_buff[tag_size];
     // Creates a rand IV
     auto iv = get_rand(iv_size);
     encrypt_aes_gcm((const uint8_t *)plain.c_str(), plain.size(), cipher_buff,
                     tag_buff, (const uint8_t *)key.c_str(), iv.data());
     tag = std::string((char *)tag_buff, tag_size);
     cipher = std::string((char *)cipher_buff, plain.size());
+    free(cipher_buff);
     return std::string(iv.begin(), iv.end()) + cipher + tag;
 }
 
