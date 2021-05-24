@@ -8,13 +8,18 @@
 //------------------------------------------------------------------------------
 std::vector<uint8_t> get_rand(size_t len) {
     std::vector<uint8_t> ret(len, 0);
-#ifdef ENCLAVED
-    sgx_read_rand(ret.data(), ret.size());
-#else
-    for (size_t i = 0; i < ret.size(); i += sizeof(int))
-        *(int *)&ret[i] = rand();
-#endif
+    get_rand_inline(len, ret.data());
     return ret;
+}
+
+//------------------------------------------------------------------------------
+void get_rand_inline(size_t len, uint8_t *where) {
+#ifdef ENCLAVED
+    sgx_read_rand(where, len);
+#else
+    for (size_t i = 0; i < len; i += sizeof(int))
+        *(int *)&where[i] = rand();
+#endif
 }
 
 //------------------------------------------------------------------------------

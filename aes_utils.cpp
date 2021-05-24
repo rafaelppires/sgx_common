@@ -105,41 +105,6 @@ std::string decrypt_aes(const std::string &k, const std::string &cipher) {
 }
 
 //------------------------------------------------------------------------------
-std::string encrypt_aesgcm(const std::string &key, const std::string &plain) {
-    unsigned iv_size = 12, tag_size = 16, meta_size = iv_size + tag_size;
-    std::string tag, cipher;
-    unsigned char *cipher_buff = reinterpret_cast<unsigned char *>(malloc(plain.size()));
-    unsigned char tag_buff[tag_size];
-    // Creates a rand IV
-    auto iv = get_rand(iv_size);
-    encrypt_aes_gcm((const uint8_t *)plain.c_str(), plain.size(), cipher_buff,
-                    tag_buff, (const uint8_t *)key.c_str(), iv.data());
-    tag = std::string((char *)tag_buff, tag_size);
-    cipher = std::string((char *)cipher_buff, plain.size());
-    free(cipher_buff);
-    return std::string(iv.begin(), iv.end()) + cipher + tag;
-}
-
-//------------------------------------------------------------------------------
-std::pair<bool, std::string> decrypt_aesgcm(const std::string &key,
-                                            const std::string &cipher) {
-    unsigned iv_size = 12, tag_size = 16, meta_size = iv_size + tag_size;
-    if (cipher.size() < 1 + meta_size) return std::make_pair(false, "");
-    int dec_size = cipher.size() - meta_size;
-    unsigned char *dec_buff = (unsigned char *)malloc(dec_size);
-    std::string plain, iv = cipher.substr(0, iv_size);
-    unsigned char tag[tag_size];
-    memcpy(tag, cipher.substr(iv_size + dec_size, tag_size).c_str(), tag_size);
-    int ret = decrypt_aes_gcm(
-        (const uint8_t *)cipher.substr(iv_size, dec_size).c_str(), dec_size,
-        dec_buff, tag, (const uint8_t *)key.c_str(),
-        (const uint8_t *)iv.c_str());
-    plain = std::string((char *)dec_buff, dec_size);
-    free(dec_buff);
-    return std::make_pair(ret == 1, plain);
-}
-
-//------------------------------------------------------------------------------
 }  // namespace Crypto
 #endif  // __cplusplus
 
@@ -276,15 +241,16 @@ void encrypt_aes_gcm(const uint8_t *plain, int in_len, uint8_t *ciphertext,
 
 //------------------------------------------------------------------------------
 int decrypt_aes_gcm(const uint8_t *ciphertext, int in_len, uint8_t *decrypted,
-                    uint8_t *reftag, const uint8_t *key, const uint8_t *iv) {
+                    const uint8_t *tag, const uint8_t *key, const uint8_t *iv) {
 #ifdef USE_OPENSSL
-    int howmany, dec_success, len;  //, aad_len = 0;
-    // const uint8_t *AAD = NULL;
+    int howmany, dec_success, len, tag_size=16;  
     const EVP_CIPHER *cipher = EVP_aes_256_gcm();
     // Decrypt
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     EVP_DecryptInit(ctx, cipher, key, iv);
-    EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, 16, reftag);
+    uint8_t reftag[tag_size];
+    memcpy(reftag, tag, tag_size);
+    EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, tag_size, reftag);
     EVP_DecryptInit(ctx, NULL, key, iv);
     // EVP_DecryptUpdate (ctx, NULL, &howmany, AAD, aad_len);
     len = 0;
@@ -295,7 +261,7 @@ int decrypt_aes_gcm(const uint8_t *ciphertext, int in_len, uint8_t *decrypted,
     }
     EVP_DecryptUpdate(ctx, decrypted + len, &howmany, ciphertext + len,
                       in_len - len);
-    uint8_t dec_TAG[16];
+    uint8_t dec_TAG[tag_size];
     dec_success = EVP_DecryptFinal(ctx, dec_TAG, &howmany);
     EVP_CIPHER_CTX_free(ctx);
     return dec_success;
