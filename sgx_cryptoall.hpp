@@ -85,7 +85,7 @@ T Crypto::sha256(const T &data) {
         data, true,
         new CryptoPP::HashFilter(hash, new CryptoPP::StringSink(digest)));
 #else
-    SHA256((const uint8_t *)data.data(), data.size(), digest.data());
+    SHA256((const uint8_t *)data.data(), data.size(), (uint8_t *)digest.data());
 #endif
     return digest;
 }

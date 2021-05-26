@@ -107,6 +107,13 @@ inline std::string to_string(unsigned x) {
 }
 
 template <>
+inline std::string to_string(void *x) {
+    char buf[100];
+    snprintf(buf, sizeof(buf), "%lX", (long unsigned)x);
+    return std::string(buf);
+}
+
+template <>
 inline std::string to_string(float x) {
     char buf[100];
     snprintf(buf, sizeof(buf), "%f", x);
